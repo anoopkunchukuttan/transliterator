@@ -8,6 +8,21 @@ import random
 
 import srilm
 
+class TransliterationModel:
+    def __init__(self):
+
+        self.f_sym_id_map={}
+        self.e_sym_id_map={}
+
+        self.f_id_sym_map={}
+        self.e_id_sym_map={}
+
+        # Dictionary of parameter values (point alignment) to its probability
+        self.param_values={}
+
+#class TransliterationDecoder: 
+#
+#    def __init__(self,lm_fname):
 
 # Alignment is a list of 'charseq_pairs'
 # represented as 'src_seq|tgtseq'
@@ -48,13 +63,9 @@ class UnsupervisedTransliteratorTrainer:
 
     def __init__(self,lm_fname):
 
-        self.f_sym_id_map={}
-        self.e_sym_id_map={}
+        self._model=TransliterationModel()
 
-        self.f_id_sym_map={}
-        self.e_id_sym_map={}
-
-        # corpus information
+        ####  corpus information
         # Each word-pair is indexed by its position in the input corpus (starting at 0)
 
         # list of all possible alignments for each word pair 
@@ -63,35 +74,29 @@ class UnsupervisedTransliteratorTrainer:
         # list of weights for all possible alignments for a word pair 
         self.wpairs_weights=[]
 
-        ## parameter information
+        ##### parameter information
 
         # for each parameter (which corresponds to a point alignment), the list of occurences in of this point alignment all possible (wordpair,alignment) locations in the corpus
         self.param_occurence_info=defaultdict(lambda :defaultdict(list))
 
-        # Dictionary of parameter values (point alignment) to its probability
-        self.param_values={}
         # Parameter values in the previous iteration 
         self.prev_param_values={}
 
-        # Decoder members 
-        # bigram language model 
-        self.lm_model=None
-        self._init_lm(lm_fname)
 
     def print_obj(self): 
 
         print("xxx Printing EM instance xxx")
         print("Symbol mappings for F: ")
-        for f_id in range(len(self.f_id_sym_map)): 
-            print u'{} {}'.format(f_id,self.f_id_sym_map[f_id]).encode('utf-8')
+        for f_id in range(len(self._model.f_id_sym_map)): 
+            print u'{} {}'.format(f_id,self._model.f_id_sym_map[f_id]).encode('utf-8')
 
         print("Symbol mappings for E: ")
-        for e_id in range(len(self.e_id_sym_map)): 
-            print u'{} {}'.format(e_id,self.e_id_sym_map[e_id]).encode('utf-8')
+        for e_id in range(len(self._model.e_id_sym_map)): 
+            print u'{} {}'.format(e_id,self._model.e_id_sym_map[e_id]).encode('utf-8')
 
         #print("Param Occurence Info: ")
-        #for eid in xrange(len(self.e_sym_id_map)): 
-        #    for fid in xrange(len(self.f_sym_id_map)): 
+        #for eid in xrange(len(self._model.e_sym_id_map)): 
+        #    for fid in xrange(len(self._model.f_sym_id_map)): 
         #        l=self.param_occurence_info[eid][fid]
         #        if len(l)>0:
         #            print 'eid={} fid={}'.format(eid,fid)
@@ -111,11 +116,11 @@ class UnsupervisedTransliteratorTrainer:
         #pprint.pprint(self.wpairs_weights)
        
         print("Transliteration Probabilities")
-        #for e_id in range(len(self.e_sym_id_map)): 
-        #    for f_id in range(len(self.f_sym_id_map)): 
-        #        #print u"P({}|{})={}".format(self.f_id_sym_map[f_id],self.e_id_sym_map[e_id],self.param_values[e_id,f_id]).encode('utf-8') 
-        #        print u"P({}|{})={}".format(f_id,e_id,self.param_values[e_id,f_id]).encode('utf-8') 
-        #pprint.pprint(self.param_values)
+        #for e_id in range(len(self._model.e_sym_id_map)): 
+        #    for f_id in range(len(self._model.f_sym_id_map)): 
+        #        #print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
+        #        print u"P({}|{})={}".format(f_id,e_id,self._model.param_values[e_id,f_id]).encode('utf-8') 
+        #pprint.pprint(self._model.param_values)
         
 
     def _generate_alignments(self,f_word,e_word):
@@ -153,15 +158,15 @@ class UnsupervisedTransliteratorTrainer:
 
                 # create 'f' sym to id mapping
                 # TODO: check if this works correctly in the unsupervised case
-                fs_id=  self.f_sym_id_map[fs]  if   self.f_sym_id_map.has_key(fs) else len(self.f_sym_id_map)
-                if fs_id==len(self.f_sym_id_map):
-                    self.f_sym_id_map[fs]=fs_id
+                fs_id=  self._model.f_sym_id_map[fs]  if   self._model.f_sym_id_map.has_key(fs) else len(self._model.f_sym_id_map)
+                if fs_id==len(self._model.f_sym_id_map):
+                    self._model.f_sym_id_map[fs]=fs_id
 
                 # create 'e' sym to id mapping
                 # TODO: check if this works correctly in the unsupervised case
-                es_id=  self.e_sym_id_map[es]  if   self.e_sym_id_map.has_key(es) else len(self.e_sym_id_map)
-                if es_id==len(self.e_sym_id_map):
-                    self.e_sym_id_map[es]=es_id
+                es_id=  self._model.e_sym_id_map[es]  if   self._model.e_sym_id_map.has_key(es) else len(self._model.e_sym_id_map)
+                if es_id==len(self._model.e_sym_id_map):
+                    self._model.e_sym_id_map[es]=es_id
 
                 align.append( [es_id,fs_id] )
            
@@ -194,12 +199,12 @@ class UnsupervisedTransliteratorTrainer:
 
         # create inverse id-symbol mappings
         # for f
-        for s,i in self.f_sym_id_map.iteritems():
-            self.f_id_sym_map[i]=s
+        for s,i in self._model.f_sym_id_map.iteritems():
+            self._model.f_id_sym_map[i]=s
     
         # for e
-        for s,i in self.e_sym_id_map.iteritems():
-            self.e_id_sym_map[i]=s
+        for s,i in self._model.e_sym_id_map.iteritems():
+            self._model.e_id_sym_map[i]=s
     
     def _initialize_parameter_structures(self): 
         """
@@ -213,21 +218,21 @@ class UnsupervisedTransliteratorTrainer:
                     self.param_occurence_info[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
     
         # initialize transliteration probabilities 
-        self.param_values=np.zeros([len(self.e_sym_id_map),len(self.f_sym_id_map)])
-        self.prev_param_values=np.zeros([len(self.e_sym_id_map),len(self.f_sym_id_map)])
+        self._model.param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
+        self.prev_param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
     
     def _m_step(self): 
         
         # accumulating counts 
-        for e_id in range(len(self.e_sym_id_map)): 
-            for f_id in range(len(self.f_sym_id_map)): 
-                self.prev_param_values[e_id,f_id]=self.param_values[e_id,f_id]
-                self.param_values[e_id,f_id] = float(sum( [self.wpairs_weights[w_id][a_id] for w_id, a_id in  self.param_occurence_info[e_id][f_id] ] ))
+        for e_id in range(len(self._model.e_sym_id_map)): 
+            for f_id in range(len(self._model.f_sym_id_map)): 
+                self.prev_param_values[e_id,f_id]=self._model.param_values[e_id,f_id]
+                self._model.param_values[e_id,f_id] = float(sum( [self.wpairs_weights[w_id][a_id] for w_id, a_id in  self.param_occurence_info[e_id][f_id] ] ))
        
         # normalizing
-        for e_id in range(len(self.e_sym_id_map)): 
-            norm_factor=np.sum(self.param_values[e_id,:])
-            self.param_values[e_id,:]=self.param_values[e_id,:]/norm_factor if norm_factor>0.0 else 0.0
+        for e_id in range(len(self._model.e_sym_id_map)): 
+            norm_factor=np.sum(self._model.param_values[e_id,:])
+            self._model.param_values[e_id,:]=self._model.param_values[e_id,:]/norm_factor if norm_factor>0.0 else 0.0
    
     def _e_step(self): 
         for wp_idx in xrange(len(self.wpairs_aligns)): 
@@ -237,7 +242,7 @@ class UnsupervisedTransliteratorTrainer:
                     aln_probs.append(
                             math.exp(
                                     # TODO: what to do about negative log probability
-                                    sum([ math.log(self.param_values[x[0],x[1]]) if self.param_values[x[0],x[1]]!=0.0  else 0.0 for x in self.wpairs_aligns[wp_idx][aln_idx] ])
+                                    sum([ math.log(self._model.param_values[x[0],x[1]]) if self._model.param_values[x[0],x[1]]!=0.0  else 0.0 for x in self.wpairs_aligns[wp_idx][aln_idx] ])
                             )
                         )
                 except ValueError as e: 
@@ -255,9 +260,9 @@ class UnsupervisedTransliteratorTrainer:
         """
         converged=True
 
-        for e_id in range(len(self.e_sym_id_map)): 
-            for f_id in range(len(self.f_sym_id_map)): 
-                if math.fabs(self.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= EPSILON:
+        for e_id in range(len(self._model.e_sym_id_map)): 
+            for f_id in range(len(self._model.f_sym_id_map)): 
+                if math.fabs(self._model.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= EPSILON:
                     converged=False
                     break;
 
@@ -290,10 +295,10 @@ class UnsupervisedTransliteratorTrainer:
         #self.print_obj()
         #self.print_params()
         #print "Final parameters"
-        #for e_id in range(len(self.e_sym_id_map)): 
-        #    for f_id in range(len(self.f_sym_id_map)): 
-        #        #print u"P({}|{})={}".format(self.f_id_sym_map[f_id],self.e_id_sym_map[e_id],self.param_values[e_id,f_id]).encode('utf-8') 
-        #        print u"P({}|{})={}".format(f_id,e_id,self.param_values[e_id,f_id]).encode('utf-8') 
+        #for e_id in range(len(self._model.e_sym_id_map)): 
+        #    for f_id in range(len(self._model.f_sym_id_map)): 
+        #        #print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
+        #        print u"P({}|{})={}".format(f_id,e_id,self._model.param_values[e_id,f_id]).encode('utf-8') 
 
     ##########################
     ### Decoding function #####
@@ -301,14 +306,14 @@ class UnsupervisedTransliteratorTrainer:
     def _bigram_score(self,hist_id,cur_id):
         """
         """
-        bigram=u'{} {}'.format( self.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
-                                self.e_id_sym_map[cur_id])
-        #bigram=u'{} {}'.format( self.e_id_sym_map[cur_id], self.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>')
+        bigram=u'{} {}'.format( self._model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
+                                self._model.e_id_sym_map[cur_id])
+        #bigram=u'{} {}'.format( self._model.e_id_sym_map[cur_id], self._model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>')
         return math.pow( 10 , srilm.getBigramProb(self.lm_model,bigram.encode('utf-8')) )
 
     def _get_param_value( self, e_id, f_input_chars ): 
-        if self.f_sym_id_map.has_key(f_input_chars): 
-            return self.param_values[  e_id , self.f_sym_id_map[f_input_chars] ]
+        if self._model.f_sym_id_map.has_key(f_input_chars): 
+            return self._model.param_values[  e_id , self._model.f_sym_id_map[f_input_chars] ]
         else:
             return 0.0
 
@@ -318,11 +323,11 @@ class UnsupervisedTransliteratorTrainer:
         """
         print 'Decoding word'
 
-        sm_shape=(len(f_input_word), len(self.e_sym_id_map.keys()) )
+        sm_shape=(len(f_input_word), len(self._model.e_sym_id_map.keys()) )
 
 
         #print 'Parameter Space: ',
-        #print self.param_values.shape
+        #print self._model.param_values.shape
 
         #print 'Scoring Matrix dimensions: ',
         #print sm_shape
@@ -335,8 +340,8 @@ class UnsupervisedTransliteratorTrainer:
 
         # initialization
         for k in xrange(sm_shape[1]):
-            #print u'{} {}'.format( self.e_id_sym_map[k] ,self._bigram_score(-1,k)).encode('utf-8')
-            #print u'{} {} {}'.format( self.e_id_sym_map[k] , f_input_word[0], self._get_param_value(  k , f_input_word[0])).encode('utf-8')
+            #print u'{} {}'.format( self._model.e_id_sym_map[k] ,self._bigram_score(-1,k)).encode('utf-8')
+            #print u'{} {} {}'.format( self._model.e_id_sym_map[k] , f_input_word[0], self._get_param_value(  k , f_input_word[0])).encode('utf-8')
             max_row_matrix[0,k]=-1                       
             max_char_matrix[0,k]=-1                       
             score_matrix[0,k]= sum ( map ( log_z  ,
@@ -418,8 +423,8 @@ class UnsupervisedTransliteratorTrainer:
         cur_k=np.argmax(score_matrix[cur_j,:])
 
         while cur_j>=0:
-            #print u'{} {} {}'.format(cur_j,cur_k,self.e_id_sym_map[cur_k]).encode('utf-8')
-            decoded_output.append( self.e_id_sym_map[cur_k] )
+            #print u'{} {} {}'.format(cur_j,cur_k,self._model.e_id_sym_map[cur_k]).encode('utf-8')
+            decoded_output.append( self._model.e_id_sym_map[cur_k] )
             new_j=max_row_matrix[cur_j,cur_k]
             new_k=max_char_matrix[cur_j,cur_k] 
             cur_j= new_j
@@ -452,34 +457,34 @@ class UnsupervisedTransliteratorTrainer:
         # create symbol to id mappings for f (from data)
         for f_input_word in f_input_words: 
             for c in f_input_word: 
-                if not self.f_sym_id_map.has_key(c): 
-                    self.f_sym_id_map[c]=len(self.f_sym_id_map)
+                if not self._model.f_sym_id_map.has_key(c): 
+                    self._model.f_sym_id_map[c]=len(self._model.f_sym_id_map)
 
         # create symbol to id mappings for e (from given list of characters)
         for i, c in enumerate(e_char_set):
-            self.e_sym_id_map[c]=i
+            self._model.e_sym_id_map[c]=i
 
         # create inverse id-symbol mappings
         # for f
-        for s,i in self.f_sym_id_map.iteritems():
-            self.f_id_sym_map[i]=s
+        for s,i in self._model.f_sym_id_map.iteritems():
+            self._model.f_id_sym_map[i]=s
     
         # for e
-        for s,i in self.e_sym_id_map.iteritems():
-            self.e_id_sym_map[i]=s
+        for s,i in self._model.e_sym_id_map.iteritems():
+            self._model.e_id_sym_map[i]=s
     
         # initialize transliteration probabilities 
-        #self.param_values=np.ones([len(self.e_sym_id_map),len(self.f_sym_id_map)]) * 1.0/len(self.f_sym_id_map)
-        self.param_values=np.zeros([len(self.e_sym_id_map),len(self.f_sym_id_map)])
-        for i in xrange(self.param_values.shape[0]):
+        #self._model.param_values=np.ones([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)]) * 1.0/len(self._model.f_sym_id_map)
+        self._model.param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
+        for i in xrange(self._model.param_values.shape[0]):
             t=1.0
-            for j in xrange(self.param_values.shape[1]-1):
+            for j in xrange(self._model.param_values.shape[1]-1):
                 v=random.random()*t
-                self.param_values[i,j]=v
+                self._model.param_values[i,j]=v
                 t=t-v
-            self.param_values[i,-1]=t                
+            self._model.param_values[i,-1]=t                
             
-        self.prev_param_values=np.zeros([len(self.e_sym_id_map),len(self.f_sym_id_map)])
+        self.prev_param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
 
     def _prepare_corpus_unsupervised(self,word_pairs): 
         """
@@ -521,9 +526,9 @@ class UnsupervisedTransliteratorTrainer:
         while(True):
             ##### M-step #####
             #print "Intermediate parameters"
-            #for e_id in range(len(self.e_sym_id_map)): 
-            #    for f_id in range(len(self.f_sym_id_map)): 
-            #        print u"P({}|{})={}".format(self.f_id_sym_map[f_id],self.e_id_sym_map[e_id],self.param_values[e_id,f_id]).encode('utf-8') 
+            #for e_id in range(len(self._model.e_sym_id_map)): 
+            #    for f_id in range(len(self._model.f_sym_id_map)): 
+            #        print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
 
             # decode: approximate marginalization over all e strings by maximization
             print "Decoding for EM"
@@ -558,9 +563,9 @@ class UnsupervisedTransliteratorTrainer:
 
         self.print_obj()
         print "Final parameters"
-        for e_id in range(len(self.e_sym_id_map)): 
-            for f_id in range(len(self.f_sym_id_map)): 
-                print u"P({}|{})={}".format(self.f_id_sym_map[f_id],self.e_id_sym_map[e_id],self.param_values[e_id,f_id]).encode('utf-8') 
+        for e_id in range(len(self._model.e_sym_id_map)): 
+            for f_id in range(len(self._model.f_sym_id_map)): 
+                print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
 
 def read_parallel_corpus(fcorpus_fname,ecorpus_fname): 
     with codecs.open(fcorpus_fname,'r','utf-8') as ffile:
