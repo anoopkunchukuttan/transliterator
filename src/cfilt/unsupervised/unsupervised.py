@@ -29,7 +29,7 @@ import srilm
 
 
 ####
-
+    
 ZERO_LOG_PROB_REPLACEMENT=-700.0
 MAX_ITER=100
 EPSILON=0.005
@@ -47,8 +47,6 @@ class UnsupervisedTransliteratorTrainer:
         srilm.readLM(self.lm_model,lm_fname)    
 
     def __init__(self,lm_fname):
-        self.wpairs_aligns=[]
-        self.wpairs_weights=[]
 
         self.f_sym_id_map={}
         self.e_sym_id_map={}
@@ -56,8 +54,23 @@ class UnsupervisedTransliteratorTrainer:
         self.f_id_sym_map={}
         self.e_id_sym_map={}
 
+        # corpus information
+        # Each word-pair is indexed by its position in the input corpus (starting at 0)
+
+        # list of all possible alignments for each word pair 
+        self.wpairs_aligns=[]
+
+        # list of weights for all possible alignments for a word pair 
+        self.wpairs_weights=[]
+
+        ## parameter information
+
+        # for each parameter (which corresponds to a point alignment), the list of occurences in of this point alignment all possible (wordpair,alignment) locations in the corpus
         self.param_occurence_info=defaultdict(lambda :defaultdict(list))
+
+        # Dictionary of parameter values (point alignment) to its probability
         self.param_values={}
+        # Parameter values in the previous iteration 
         self.prev_param_values={}
 
         # Decoder members 
@@ -506,18 +519,19 @@ class UnsupervisedTransliteratorTrainer:
 
         niter=0
         while(True):
-            #### M-step #####
-            print "Intermediate parameters"
-            for e_id in range(len(self.e_sym_id_map)): 
-                for f_id in range(len(self.f_sym_id_map)): 
-                    print u"P({}|{})={}".format(self.f_id_sym_map[f_id],self.e_id_sym_map[e_id],self.param_values[e_id,f_id]).encode('utf-8') 
+            ##### M-step #####
+            #print "Intermediate parameters"
+            #for e_id in range(len(self.e_sym_id_map)): 
+            #    for f_id in range(len(self.f_sym_id_map)): 
+            #        print u"P({}|{})={}".format(self.f_id_sym_map[f_id],self.e_id_sym_map[e_id],self.param_values[e_id,f_id]).encode('utf-8') 
 
             # decode: approximate marginalization over all e strings by maximization
             print "Decoding for EM"
             word_pairs=list(it.izip( f_input_words, it.imap( self._decode_internal,f_input_words)  ))
 
-            for x,y in word_pairs: 
-                print u'{}: {}: {}'.format(''.join(x),' '.join(y),len(y)).encode('utf-8')
+            ## the best candidates after decoding    
+            #for x,y in word_pairs: 
+            #    print u'{}: {}: {}'.format(''.join(x),' '.join(y),len(y)).encode('utf-8')
 
             # initialize the EM training
             print "Preparing corpus"
@@ -551,11 +565,11 @@ class UnsupervisedTransliteratorTrainer:
 def read_parallel_corpus(fcorpus_fname,ecorpus_fname): 
     with codecs.open(fcorpus_fname,'r','utf-8') as ffile:
         with codecs.open(ecorpus_fname,'r','utf-8') as efile:
-            return [ ( f.split() , e.split()  )  for f,e in it.izip( iter(ffile)  , iter(efile)  ) ] 
+            return [ ( f.strip().split() , e.strip().split()  )  for f,e in it.izip( iter(ffile)  , iter(efile)  ) ] 
 
 def read_monolingual_corpus(corpus_fname): 
     with codecs.open(corpus_fname,'r','utf-8') as infile:
-            return [ w.split()  for w in infile ] 
+            return [ w.strip().split()  for w in infile ] 
 
 def generate_char_set(fname):
     char_set=set()
@@ -593,15 +607,23 @@ if __name__=='__main__':
 
     ########  Unsupervised training
     data_dir='/home/development/anoop/experiments/unsupervised_transliterator/data'
-    parallel_dir=data_dir+'/'+'en-hi'
+    #parallel_dir=data_dir+'/'+'en-hi'
 
-    fcorpus_fname=parallel_dir+'/'+'test.en'
-    ecorpus_fname=parallel_dir+'/'+'test.hi'
+    #fcorpus_fname=parallel_dir+'/'+'train.en'
+    #ecorpus_fname=parallel_dir+'/'+'train.hi'
+    #test_fcorpus_fname=parallel_dir+'/'+'test.en'
+    #test_ecorpus_fname=parallel_dir+'/'+'test.hi'
+
+    fcorpus_fname='10.en'
+    ecorpus_fname='10.hi'
+    test_fcorpus_fname='10.en'
+    test_ecorpus_fname='10.hi'
+
     lm_fname=data_dir+'/'+'hi-2g.lm'
-    test_fcorpus_fname=parallel_dir+'/'+'test.en'
-    test_ecorpus_fname=parallel_dir+'/'+'test.hi'
 
     em=UnsupervisedTransliteratorTrainer(lm_fname)
     em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname))
 
     em.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
+
+
