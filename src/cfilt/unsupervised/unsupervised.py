@@ -20,9 +20,6 @@ class TransliterationModel:
         # Dictionary of parameter values (point alignment) to its probability
         self.param_values={}
 
-#class TransliterationDecoder: 
-#
-#    def __init__(self,lm_fname):
 
 # Alignment is a list of 'charseq_pairs'
 # represented as 'src_seq|tgtseq'
@@ -82,6 +79,10 @@ class UnsupervisedTransliteratorTrainer:
         # Parameter values in the previous iteration 
         self.prev_param_values={}
 
+        ####  Decoder members 
+        # bigram language model 
+        self.lm_model=None
+        self._init_lm(lm_fname)
 
     def print_obj(self): 
 
