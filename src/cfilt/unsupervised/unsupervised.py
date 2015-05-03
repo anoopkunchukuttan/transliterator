@@ -8,7 +8,16 @@ import random
 
 import srilm
 
+def load_lm_model(lm_fname, order=2): 
+    lm_model=srilm.initLM(order)
+    srilm.readLM(lm_model,lm_fname)    
+    return lm_model
+
 class TransliterationModel:
+
+    def load_translit_model(translit_model_fname): 
+        pass 
+
     def __init__(self):
 
         self.f_sym_id_map={}
@@ -20,301 +29,25 @@ class TransliterationModel:
         # Dictionary of parameter values (point alignment) to its probability
         self.param_values={}
 
+class TransliterationDecoder: 
 
-# Alignment is a list of 'charseq_pairs'
-# represented as 'src_seq|tgtseq'
-# Associated with every alignment is a weight
-# Every word pair generates a list of tuples [alignment,weight]
-# The corpus is a list of word pair
-# Each alignment point in the corpus can be uniquely identified by (word_pair_idx,align_idx,aln_point_idx)
-#
-#       corpus =>  [wpairs_aligns,wpairs_weights]
-#       wpairs_aligns=> list( alignments )
-#       wpairs_weights=> list( weights )
-#       alignment => list(charseq_pair)
-#       weights => list(float)
-#       charseq_pair => 'src_seq|tgt_seq'
-
-###
-# NOTES
-# nf>ne required for allowed mapping of at least 1 on e side
+    def __init__(self,translit_model, lm_model, order=2): 
+        self._lm_model=lm_model
+        self._lm_order=order
+        self._translit_model=translit_model
 
 
-####
-    
-ZERO_LOG_PROB_REPLACEMENT=-700.0
-MAX_ITER=100
-EPSILON=0.005
-
-def log_z(x): 
-    return  math.log(x) if x>0.0 else ZERO_LOG_PROB_REPLACEMENT
-
-class UnsupervisedTransliteratorTrainer: 
-
-    ## ALLOWED mappings
-    ALLOWED_MAPPINGS=[1,2]
-   
-    def _init_lm(self,lm_fname): 
-        self.lm_model=srilm.initLM(2)
-        srilm.readLM(self.lm_model,lm_fname)    
-
-    def __init__(self,lm_fname):
-
-        self._model=TransliterationModel()
-
-        ####  corpus information
-        # Each word-pair is indexed by its position in the input corpus (starting at 0)
-
-        # list of all possible alignments for each word pair 
-        self.wpairs_aligns=[]
-
-        # list of weights for all possible alignments for a word pair 
-        self.wpairs_weights=[]
-
-        ##### parameter information
-
-        # for each parameter (which corresponds to a point alignment), the list of occurences in of this point alignment all possible (wordpair,alignment) locations in the corpus
-        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
-
-        # Parameter values in the previous iteration 
-        self.prev_param_values={}
-
-        ####  Decoder members 
-        # bigram language model 
-        self.lm_model=None
-        self._init_lm(lm_fname)
-
-    def print_obj(self): 
-
-        print("xxx Printing EM instance xxx")
-        print("Symbol mappings for F: ")
-        for f_id in range(len(self._model.f_id_sym_map)): 
-            print u'{} {}'.format(f_id,self._model.f_id_sym_map[f_id]).encode('utf-8')
-
-        print("Symbol mappings for E: ")
-        for e_id in range(len(self._model.e_id_sym_map)): 
-            print u'{} {}'.format(e_id,self._model.e_id_sym_map[e_id]).encode('utf-8')
-
-        #print("Param Occurence Info: ")
-        #for eid in xrange(len(self._model.e_sym_id_map)): 
-        #    for fid in xrange(len(self._model.f_sym_id_map)): 
-        #        l=self.param_occurence_info[eid][fid]
-        #        if len(l)>0:
-        #            print 'eid={} fid={}'.format(eid,fid)
-        #            pprint.pprint(l)
-
-        #print("Alignments: ")
-        ## gather transliteration occurrence info
-        #for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-        #    for aln_idx,align in enumerate(alignments): 
-        #        print 'wp_idx={} aln_idx={}'.format(wp_idx,aln_idx)
-        #        pprint.pprint(align)
-        #        #for charseq_pair in align: 
-        #        #    print[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
-
-    def print_params(self): 
-        #print("Alignment Weights: ")
-        #pprint.pprint(self.wpairs_weights)
-       
-        print("Transliteration Probabilities")
-        #for e_id in range(len(self._model.e_sym_id_map)): 
-        #    for f_id in range(len(self._model.f_sym_id_map)): 
-        #        #print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
-        #        print u"P({}|{})={}".format(f_id,e_id,self._model.param_values[e_id,f_id]).encode('utf-8') 
-        #pprint.pprint(self._model.param_values)
-        
-
-    def _generate_alignments(self,f_word,e_word):
-        """
-            src_word: list of src characters
-            tgt_word: list of tgt characters 
-    
-            return: wpair_info for this pair
-        """
-        nf=len(f_word)
-        ne=len(e_word)
-    
-        alignment_preseqs=list(it.ifilter( lambda x: sum(x)==nf, 
-                                it.product(UnsupervisedTransliteratorTrainer.ALLOWED_MAPPINGS,repeat=ne)
-                          ))
-    
-        wpairs_aligns=[]
-    
-        for ap in alignment_preseqs:
-    
-            # compute the end offsets on 'f' side for each charseq_pair by cumulative addition 
-            align_offsets=list(ap)
-            for i in range(1,len(align_offsets)):
-                align_offsets[i]=align_offsets[i]+align_offsets[i-1]
-
-            # insert the first starting offset             
-            align_offsets.insert(0,0)            
-    
-            # extract the charseq_pair
-            align=[]
-            for i in range(len(align_offsets)-1): 
-                #charseq_pair=u''.join( f_word[align_offsets[i]:align_offsets[i+1]] ) + u'|' + e_word[i]
-                fs=u''.join( f_word[align_offsets[i]:align_offsets[i+1]] )
-                es=e_word[i]
-
-                # create 'f' sym to id mapping
-                # TODO: check if this works correctly in the unsupervised case
-                fs_id=  self._model.f_sym_id_map[fs]  if   self._model.f_sym_id_map.has_key(fs) else len(self._model.f_sym_id_map)
-                if fs_id==len(self._model.f_sym_id_map):
-                    self._model.f_sym_id_map[fs]=fs_id
-
-                # create 'e' sym to id mapping
-                # TODO: check if this works correctly in the unsupervised case
-                es_id=  self._model.e_sym_id_map[es]  if   self._model.e_sym_id_map.has_key(es) else len(self._model.e_sym_id_map)
-                if es_id==len(self._model.e_sym_id_map):
-                    self._model.e_sym_id_map[es]=es_id
-
-                align.append( [es_id,fs_id] )
-           
-            wpairs_aligns.append(align)
-    
-        return wpairs_aligns
-    
-    
-    def _create_alignment_database(self,word_pairs):
-        """
-          every character sequence in the corpus can be uniquely addressed as: 
-            corpus[0][word_pair_idx][align_idx][aln_point_idx]
-    
-          every weight can be indexed as: 
-            corpus[1][word_pair_idx][align_idx]
-    
-        """
-        #TODO: merge _create_alignment_database and _initialize_parameter_structures  into a single function _prepare_corpus_supervised
-
-        self.wpairs_aligns=[]
-        self.wpairs_weights=[]
-    
-        for f,e in word_pairs: 
-            alignments=self._generate_alignments(f,e)
-            if len(alignments)>0:
-                self.wpairs_aligns.append(alignments)
-                self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
-            else: 
-                print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
-
-        # create inverse id-symbol mappings
-        # for f
-        for s,i in self._model.f_sym_id_map.iteritems():
-            self._model.f_id_sym_map[i]=s
-    
-        # for e
-        for s,i in self._model.e_sym_id_map.iteritems():
-            self._model.e_id_sym_map[i]=s
-    
-    def _initialize_parameter_structures(self): 
-        """
-    
-        """
-        # gather transliteration occurrence info
-        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
-        for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-            for aln_idx,align in enumerate(alignments): 
-                for charseq_pair in align: 
-                    self.param_occurence_info[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
-    
-        # initialize transliteration probabilities 
-        self._model.param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
-        self.prev_param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
-    
-    def _m_step(self): 
-        
-        # accumulating counts 
-        for e_id in range(len(self._model.e_sym_id_map)): 
-            for f_id in range(len(self._model.f_sym_id_map)): 
-                self.prev_param_values[e_id,f_id]=self._model.param_values[e_id,f_id]
-                self._model.param_values[e_id,f_id] = float(sum( [self.wpairs_weights[w_id][a_id] for w_id, a_id in  self.param_occurence_info[e_id][f_id] ] ))
-       
-        # normalizing
-        for e_id in range(len(self._model.e_sym_id_map)): 
-            norm_factor=np.sum(self._model.param_values[e_id,:])
-            self._model.param_values[e_id,:]=self._model.param_values[e_id,:]/norm_factor if norm_factor>0.0 else 0.0
-   
-    def _e_step(self): 
-        for wp_idx in xrange(len(self.wpairs_aligns)): 
-            aln_probs=[]
-            for aln_idx in xrange(len(self.wpairs_aligns[wp_idx])): 
-                try: 
-                    aln_probs.append(
-                            math.exp(
-                                    # TODO: what to do about negative log probability
-                                    sum([ math.log(self._model.param_values[x[0],x[1]]) if self._model.param_values[x[0],x[1]]!=0.0  else 0.0 for x in self.wpairs_aligns[wp_idx][aln_idx] ])
-                            )
-                        )
-                except ValueError as e: 
-                    print "Exception"
-                    print e.message
-           
-            norm_factor=sum(aln_probs)
-            for aln_idx in xrange(len(self.wpairs_aligns[wp_idx])): 
-                self.wpairs_weights[wp_idx][aln_idx]=aln_probs[aln_idx]/norm_factor
-
-
-    def _has_converged(self):
-        """
-            check if parameter values between successive iterations are within a threshold 
-        """
-        converged=True
-
-        for e_id in range(len(self._model.e_sym_id_map)): 
-            for f_id in range(len(self._model.f_sym_id_map)): 
-                if math.fabs(self._model.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= EPSILON:
-                    converged=False
-                    break;
-
-        return converged
-
-    def em_supervised_train(self,word_pairs): 
-        """
-        """
-    
-        self._create_alignment_database(word_pairs)
-        self._initialize_parameter_structures()
-    
-        MAX_ITER=100
-        niter=0
-        while(True):
-            # M-step
-            self._m_step()
-            niter+=1
-
-            #self.print_params()
-            print '=== Iteration {} completed ==='.format(niter)
-
-            # check for end of process 
-            if niter>=MAX_ITER or self._has_converged():
-                break
-    
-            # E-step 
-            self._e_step()
-
-        #self.print_obj()
-        #self.print_params()
-        #print "Final parameters"
-        #for e_id in range(len(self._model.e_sym_id_map)): 
-        #    for f_id in range(len(self._model.f_sym_id_map)): 
-        #        #print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
-        #        print u"P({}|{})={}".format(f_id,e_id,self._model.param_values[e_id,f_id]).encode('utf-8') 
-
-    ##########################
-    ### Decoding function #####
-    ##########################
     def _bigram_score(self,hist_id,cur_id):
         """
         """
-        bigram=u'{} {}'.format( self._model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
-                                self._model.e_id_sym_map[cur_id])
-        #bigram=u'{} {}'.format( self._model.e_id_sym_map[cur_id], self._model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>')
-        return math.pow( 10 , srilm.getBigramProb(self.lm_model,bigram.encode('utf-8')) )
+        bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
+                                self._translit_model.e_id_sym_map[cur_id])
+        #bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[cur_id], self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>')
+        return math.pow( 10 , srilm.getBigramProb(self._lm_model,bigram.encode('utf-8')) )
 
     def _get_param_value( self, e_id, f_input_chars ): 
-        if self._model.f_sym_id_map.has_key(f_input_chars): 
-            return self._model.param_values[  e_id , self._model.f_sym_id_map[f_input_chars] ]
+        if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
+            return self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ]
         else:
             return 0.0
 
@@ -324,11 +57,11 @@ class UnsupervisedTransliteratorTrainer:
         """
         print 'Decoding word'
 
-        sm_shape=(len(f_input_word), len(self._model.e_sym_id_map.keys()) )
+        sm_shape=(len(f_input_word), len(self._translit_model.e_sym_id_map.keys()) )
 
 
         #print 'Parameter Space: ',
-        #print self._model.param_values.shape
+        #print self._translit_model.param_values.shape
 
         #print 'Scoring Matrix dimensions: ',
         #print sm_shape
@@ -341,8 +74,8 @@ class UnsupervisedTransliteratorTrainer:
 
         # initialization
         for k in xrange(sm_shape[1]):
-            #print u'{} {}'.format( self._model.e_id_sym_map[k] ,self._bigram_score(-1,k)).encode('utf-8')
-            #print u'{} {} {}'.format( self._model.e_id_sym_map[k] , f_input_word[0], self._get_param_value(  k , f_input_word[0])).encode('utf-8')
+            #print u'{} {}'.format( self._translit_model.e_id_sym_map[k] ,self._bigram_score(-1,k)).encode('utf-8')
+            #print u'{} {} {}'.format( self._translit_model.e_id_sym_map[k] , f_input_word[0], self._get_param_value(  k , f_input_word[0])).encode('utf-8')
             max_row_matrix[0,k]=-1                       
             max_char_matrix[0,k]=-1                       
             score_matrix[0,k]= sum ( map ( log_z  ,
@@ -424,8 +157,8 @@ class UnsupervisedTransliteratorTrainer:
         cur_k=np.argmax(score_matrix[cur_j,:])
 
         while cur_j>=0:
-            #print u'{} {} {}'.format(cur_j,cur_k,self._model.e_id_sym_map[cur_k]).encode('utf-8')
-            decoded_output.append( self._model.e_id_sym_map[cur_k] )
+            #print u'{} {} {}'.format(cur_j,cur_k,self._translit_model.e_id_sym_map[cur_k]).encode('utf-8')
+            decoded_output.append( self._translit_model.e_id_sym_map[cur_k] )
             new_j=max_row_matrix[cur_j,cur_k]
             new_k=max_char_matrix[cur_j,cur_k] 
             cur_j= new_j
@@ -446,6 +179,284 @@ class UnsupervisedTransliteratorTrainer:
 
             print u'{} {} {}'.format(*map(lambda x:''.join(x), [f_input_word,e_output_word,best_output]) ).encode('utf-8')
 
+# Alignment is a list of 'charseq_pairs'
+# represented as 'src_seq|tgtseq'
+# Associated with every alignment is a weight
+# Every word pair generates a list of tuples [alignment,weight]
+# The corpus is a list of word pair
+# Each alignment point in the corpus can be uniquely identified by (word_pair_idx,align_idx,aln_point_idx)
+#
+#       corpus =>  [wpairs_aligns,wpairs_weights]
+#       wpairs_aligns=> list( alignments )
+#       wpairs_weights=> list( weights )
+#       alignment => list(charseq_pair)
+#       weights => list(float)
+#       charseq_pair => 'src_seq|tgt_seq'
+
+###
+# NOTES
+# nf>ne required for allowed mapping of at least 1 on e side
+
+
+####
+    
+ZERO_LOG_PROB_REPLACEMENT=-700.0
+MAX_ITER=100
+EPSILON=0.005
+
+def log_z(x): 
+    return  math.log(x) if x>0.0 else ZERO_LOG_PROB_REPLACEMENT
+
+class UnsupervisedTransliteratorTrainer: 
+
+    ## ALLOWED mappings
+    ALLOWED_MAPPINGS=[1,2]
+   
+    def __init__(self,lm_model):
+
+        self._translit_model=TransliterationModel()
+
+        ####  corpus information
+        # Each word-pair is indexed by its position in the input corpus (starting at 0)
+
+        # list of all possible alignments for each word pair 
+        self.wpairs_aligns=[]
+
+        # list of weights for all possible alignments for a word pair 
+        self.wpairs_weights=[]
+
+        ##### parameter information
+
+        # for each parameter (which corresponds to a point alignment), the list of occurences in of this point alignment all possible (wordpair,alignment) locations in the corpus
+        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
+
+        # Parameter values in the previous iteration 
+        self.prev_param_values={}
+
+        #### Language model 
+        self._lm_model=lm_model
+
+    def print_obj(self): 
+
+        print("xxx Printing EM instance xxx")
+        print("Symbol mappings for F: ")
+        for f_id in range(len(self._translit_model.f_id_sym_map)): 
+            print u'{} {}'.format(f_id,self._translit_model.f_id_sym_map[f_id]).encode('utf-8')
+
+        print("Symbol mappings for E: ")
+        for e_id in range(len(self._translit_model.e_id_sym_map)): 
+            print u'{} {}'.format(e_id,self._translit_model.e_id_sym_map[e_id]).encode('utf-8')
+
+        #print("Param Occurence Info: ")
+        #for eid in xrange(len(self._translit_model.e_sym_id_map)): 
+        #    for fid in xrange(len(self._translit_model.f_sym_id_map)): 
+        #        l=self.param_occurence_info[eid][fid]
+        #        if len(l)>0:
+        #            print 'eid={} fid={}'.format(eid,fid)
+        #            pprint.pprint(l)
+
+        #print("Alignments: ")
+        ## gather transliteration occurrence info
+        #for wp_idx,alignments in enumerate(self.wpairs_aligns): 
+        #    for aln_idx,align in enumerate(alignments): 
+        #        print 'wp_idx={} aln_idx={}'.format(wp_idx,aln_idx)
+        #        pprint.pprint(align)
+        #        #for charseq_pair in align: 
+        #        #    print[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
+
+    def print_params(self): 
+        #print("Alignment Weights: ")
+        #pprint.pprint(self.wpairs_weights)
+       
+        print("Transliteration Probabilities")
+        #for e_id in range(len(self._translit_model.e_sym_id_map)): 
+        #    for f_id in range(len(self._translit_model.f_sym_id_map)): 
+        #        #print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
+        #        print u"P({}|{})={}".format(f_id,e_id,self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
+        #pprint.pprint(self._translit_model.param_values)
+        
+
+    def _generate_alignments(self,f_word,e_word):
+        """
+            src_word: list of src characters
+            tgt_word: list of tgt characters 
+    
+            return: wpair_info for this pair
+        """
+        nf=len(f_word)
+        ne=len(e_word)
+    
+        alignment_preseqs=list(it.ifilter( lambda x: sum(x)==nf, 
+                                it.product(UnsupervisedTransliteratorTrainer.ALLOWED_MAPPINGS,repeat=ne)
+                          ))
+    
+        wpairs_aligns=[]
+    
+        for ap in alignment_preseqs:
+    
+            # compute the end offsets on 'f' side for each charseq_pair by cumulative addition 
+            align_offsets=list(ap)
+            for i in range(1,len(align_offsets)):
+                align_offsets[i]=align_offsets[i]+align_offsets[i-1]
+
+            # insert the first starting offset             
+            align_offsets.insert(0,0)            
+    
+            # extract the charseq_pair
+            align=[]
+            for i in range(len(align_offsets)-1): 
+                #charseq_pair=u''.join( f_word[align_offsets[i]:align_offsets[i+1]] ) + u'|' + e_word[i]
+                fs=u''.join( f_word[align_offsets[i]:align_offsets[i+1]] )
+                es=e_word[i]
+
+                # create 'f' sym to id mapping
+                # TODO: check if this works correctly in the unsupervised case
+                fs_id=  self._translit_model.f_sym_id_map[fs]  if   self._translit_model.f_sym_id_map.has_key(fs) else len(self._translit_model.f_sym_id_map)
+                if fs_id==len(self._translit_model.f_sym_id_map):
+                    self._translit_model.f_sym_id_map[fs]=fs_id
+
+                # create 'e' sym to id mapping
+                # TODO: check if this works correctly in the unsupervised case
+                es_id=  self._translit_model.e_sym_id_map[es]  if   self._translit_model.e_sym_id_map.has_key(es) else len(self._translit_model.e_sym_id_map)
+                if es_id==len(self._translit_model.e_sym_id_map):
+                    self._translit_model.e_sym_id_map[es]=es_id
+
+                align.append( [es_id,fs_id] )
+           
+            wpairs_aligns.append(align)
+    
+        return wpairs_aligns
+    
+    
+    def _create_alignment_database(self,word_pairs):
+        """
+          every character sequence in the corpus can be uniquely addressed as: 
+            corpus[0][word_pair_idx][align_idx][aln_point_idx]
+    
+          every weight can be indexed as: 
+            corpus[1][word_pair_idx][align_idx]
+    
+        """
+        #TODO: merge _create_alignment_database and _initialize_parameter_structures  into a single function _prepare_corpus_supervised
+
+        self.wpairs_aligns=[]
+        self.wpairs_weights=[]
+    
+        for f,e in word_pairs: 
+            alignments=self._generate_alignments(f,e)
+            if len(alignments)>0:
+                self.wpairs_aligns.append(alignments)
+                self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
+            else: 
+                print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+
+        # create inverse id-symbol mappings
+        # for f
+        for s,i in self._translit_model.f_sym_id_map.iteritems():
+            self._translit_model.f_id_sym_map[i]=s
+    
+        # for e
+        for s,i in self._translit_model.e_sym_id_map.iteritems():
+            self._translit_model.e_id_sym_map[i]=s
+    
+    def _initialize_parameter_structures(self): 
+        """
+    
+        """
+        # gather transliteration occurrence info
+        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
+        for wp_idx,alignments in enumerate(self.wpairs_aligns): 
+            for aln_idx,align in enumerate(alignments): 
+                for charseq_pair in align: 
+                    self.param_occurence_info[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
+    
+        # initialize transliteration probabilities 
+        self._translit_model.param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
+        self.prev_param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
+    
+    def _m_step(self): 
+        
+        # accumulating counts 
+        for e_id in range(len(self._translit_model.e_sym_id_map)): 
+            for f_id in range(len(self._translit_model.f_sym_id_map)): 
+                self.prev_param_values[e_id,f_id]=self._translit_model.param_values[e_id,f_id]
+                self._translit_model.param_values[e_id,f_id] = float(sum( [self.wpairs_weights[w_id][a_id] for w_id, a_id in  self.param_occurence_info[e_id][f_id] ] ))
+       
+        # normalizing
+        for e_id in range(len(self._translit_model.e_sym_id_map)): 
+            norm_factor=np.sum(self._translit_model.param_values[e_id,:])
+            self._translit_model.param_values[e_id,:]=self._translit_model.param_values[e_id,:]/norm_factor if norm_factor>0.0 else 0.0
+   
+    def _e_step(self): 
+        for wp_idx in xrange(len(self.wpairs_aligns)): 
+            aln_probs=[]
+            for aln_idx in xrange(len(self.wpairs_aligns[wp_idx])): 
+                try: 
+                    aln_probs.append(
+                            math.exp(
+                                    # TODO: what to do about negative log probability
+                                    sum([ math.log(self._translit_model.param_values[x[0],x[1]]) if self._translit_model.param_values[x[0],x[1]]!=0.0  else 0.0 for x in self.wpairs_aligns[wp_idx][aln_idx] ])
+                            )
+                        )
+                except ValueError as e: 
+                    print "Exception"
+                    print e.message
+           
+            norm_factor=sum(aln_probs)
+            for aln_idx in xrange(len(self.wpairs_aligns[wp_idx])): 
+                self.wpairs_weights[wp_idx][aln_idx]=aln_probs[aln_idx]/norm_factor
+
+
+    def _has_converged(self):
+        """
+            check if parameter values between successive iterations are within a threshold 
+        """
+        converged=True
+
+        for e_id in range(len(self._translit_model.e_sym_id_map)): 
+            for f_id in range(len(self._translit_model.f_sym_id_map)): 
+                if math.fabs(self._translit_model.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= EPSILON:
+                    converged=False
+                    break;
+
+        return converged
+
+    def em_supervised_train(self,word_pairs): 
+        """
+        """
+    
+        self._create_alignment_database(word_pairs)
+        self._initialize_parameter_structures()
+    
+        MAX_ITER=100
+        niter=0
+        while(True):
+            # M-step
+            self._m_step()
+            niter+=1
+
+            #self.print_params()
+            print '=== Iteration {} completed ==='.format(niter)
+
+            # check for end of process 
+            if niter>=MAX_ITER or self._has_converged():
+                break
+    
+            # E-step 
+            self._e_step()
+
+        #self.print_obj()
+        #self.print_params()
+        #print "Final parameters"
+        #for e_id in range(len(self._translit_model.e_sym_id_map)): 
+        #    for f_id in range(len(self._translit_model.f_sym_id_map)): 
+        #        #print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
+        #        print u"P({}|{})={}".format(f_id,e_id,self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
+
+    ##########################
+    ### Decoding function #####
+    ##########################
+
     ############################################
     ### Unsupervised training functions ########
     ############################################
@@ -458,34 +469,34 @@ class UnsupervisedTransliteratorTrainer:
         # create symbol to id mappings for f (from data)
         for f_input_word in f_input_words: 
             for c in f_input_word: 
-                if not self._model.f_sym_id_map.has_key(c): 
-                    self._model.f_sym_id_map[c]=len(self._model.f_sym_id_map)
+                if not self._translit_model.f_sym_id_map.has_key(c): 
+                    self._translit_model.f_sym_id_map[c]=len(self._translit_model.f_sym_id_map)
 
         # create symbol to id mappings for e (from given list of characters)
         for i, c in enumerate(e_char_set):
-            self._model.e_sym_id_map[c]=i
+            self._translit_model.e_sym_id_map[c]=i
 
         # create inverse id-symbol mappings
         # for f
-        for s,i in self._model.f_sym_id_map.iteritems():
-            self._model.f_id_sym_map[i]=s
+        for s,i in self._translit_model.f_sym_id_map.iteritems():
+            self._translit_model.f_id_sym_map[i]=s
     
         # for e
-        for s,i in self._model.e_sym_id_map.iteritems():
-            self._model.e_id_sym_map[i]=s
+        for s,i in self._translit_model.e_sym_id_map.iteritems():
+            self._translit_model.e_id_sym_map[i]=s
     
         # initialize transliteration probabilities 
-        #self._model.param_values=np.ones([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)]) * 1.0/len(self._model.f_sym_id_map)
-        self._model.param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
-        for i in xrange(self._model.param_values.shape[0]):
+        #self._translit_model.param_values=np.ones([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)]) * 1.0/len(self._translit_model.f_sym_id_map)
+        self._translit_model.param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
+        for i in xrange(self._translit_model.param_values.shape[0]):
             t=1.0
-            for j in xrange(self._model.param_values.shape[1]-1):
+            for j in xrange(self._translit_model.param_values.shape[1]-1):
                 v=random.random()*t
-                self._model.param_values[i,j]=v
+                self._translit_model.param_values[i,j]=v
                 t=t-v
-            self._model.param_values[i,-1]=t                
+            self._translit_model.param_values[i,-1]=t                
             
-        self.prev_param_values=np.zeros([len(self._model.e_sym_id_map),len(self._model.f_sym_id_map)])
+        self.prev_param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
 
     def _prepare_corpus_unsupervised(self,word_pairs): 
         """
@@ -527,13 +538,14 @@ class UnsupervisedTransliteratorTrainer:
         while(True):
             ##### M-step #####
             #print "Intermediate parameters"
-            #for e_id in range(len(self._model.e_sym_id_map)): 
-            #    for f_id in range(len(self._model.f_sym_id_map)): 
-            #        print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
+            #for e_id in range(len(self._translit_model.e_sym_id_map)): 
+            #    for f_id in range(len(self._translit_model.f_sym_id_map)): 
+            #        print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
 
             # decode: approximate marginalization over all e strings by maximization
             print "Decoding for EM"
-            word_pairs=list(it.izip( f_input_words, it.imap( self._decode_internal,f_input_words)  ))
+            decoder=TransliterationDecoder(self._translit_model,self._lm_model)
+            word_pairs=list(it.izip( f_input_words, it.imap( decoder._decode_internal,f_input_words)  ))
 
             ## the best candidates after decoding    
             #for x,y in word_pairs: 
@@ -564,9 +576,9 @@ class UnsupervisedTransliteratorTrainer:
 
         self.print_obj()
         print "Final parameters"
-        for e_id in range(len(self._model.e_sym_id_map)): 
-            for f_id in range(len(self._model.f_sym_id_map)): 
-                print u"P({}|{})={}".format(self._model.f_id_sym_map[f_id],self._model.e_id_sym_map[e_id],self._model.param_values[e_id,f_id]).encode('utf-8') 
+        for e_id in range(len(self._translit_model.e_sym_id_map)): 
+            for f_id in range(len(self._translit_model.f_sym_id_map)): 
+                print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
 
 def read_parallel_corpus(fcorpus_fname,ecorpus_fname): 
     with codecs.open(fcorpus_fname,'r','utf-8') as ffile:
@@ -627,9 +639,12 @@ if __name__=='__main__':
 
     lm_fname=data_dir+'/'+'hi-2g.lm'
 
-    em=UnsupervisedTransliteratorTrainer(lm_fname)
+    lm_model=load_lm_model(lm_fname)
+
+    em=UnsupervisedTransliteratorTrainer(lm_model)
     em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname))
 
-    em.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
+    decoder=TransliterationDecoder(em._translit_model,em._lm_model)
+    decoder.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
 
 
