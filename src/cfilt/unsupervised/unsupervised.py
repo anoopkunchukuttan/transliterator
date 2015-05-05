@@ -1,5 +1,5 @@
 import itertools as it
-import codecs, sys
+import codecs, sys, pickle
 import pprint 
 from collections import defaultdict
 import numpy as np, math
@@ -8,15 +8,86 @@ import random
 
 import srilm
 
+from cfilt.utilities import timer
+
+
+#class SimpleLanguageModel: 
+#
+#    def __init__(c_id_map, lm_fname, order=2): 
+#        with codecs.open(lm_fname,'r','utf-8') as lmfile:
+#            codecs.readline()
+#            codecs.readline()
+#
+#            # read up first header line
+#            [ codecs.readline() for _ in xrange(2) ]
+#                
+#            section_lengths=[ int(codecs.readline().strip().split(u'=')[1]) for _ in xrange(order) ]
+#
+#            for o, section_length in enumerate(section_lengths,1): 
+#                for 
+
+
 def load_lm_model(lm_fname, order=2): 
+    """
+    function to load language model 
+    """
     lm_model=srilm.initLM(order)
     srilm.readLM(lm_model,lm_fname)    
     return lm_model
 
 class TransliterationModel:
+    """
+        The transliteration Model 
+    """
 
+    @staticmethod
+    def construct_transliteration_model(fcfname,ecfname,alignmentfname): 
+        tm=TransliterationModel()
+
+        #with open(ecfname,'r') as ecfile: 
+        #    for l in ecfile: 
+        #        print unicode(l,'utf-8','strict').encode('utf-8')
+        #        #print hex(ord(l.strip()))
+
+        with codecs.open(fcfname,'r','utf-8') as fcfile: 
+            fchars=[x.strip() for x in fcfile.readlines()]
+               
+            for i,c in enumerate(fchars): 
+                tm.f_sym_id_map[c]=i
+                tm.f_id_sym_map[i]=c
+
+        with codecs.open(ecfname,'r','utf-8') as ecfile: 
+
+            echars=[x.strip() for x in ecfile.readlines()]
+
+            for i,c in enumerate(echars): 
+                tm.e_sym_id_map[c]=i
+                tm.e_id_sym_map[i]=c
+
+        with codecs.open(alignmentfname,'r','utf-8') as afile: 
+            
+            tm.param_values=np.zeros([len(tm.e_sym_id_map),len(tm.f_sym_id_map)])
+            for e_id, line in enumerate(iter(afile)): 
+                fields=[ float(x) for x in line.strip().split('\t') ]
+
+                for f_id, v in enumerate(fields): 
+                    tm.param_values[e_id,f_id]=v
+                
+                norm_factor=np.sum(tm.param_values[e_id,:])
+                tm.param_values[e_id,:]=tm.param_values[e_id,:]/norm_factor if norm_factor>0.0 else 0.0
+                print tm.param_values[e_id,:]
+
+        return tm
+
+    @staticmethod
     def load_translit_model(translit_model_fname): 
-        pass 
+        with open(translit_model_fname,'r') as translit_model_file: 
+            return pickle.load(translit_model_file)
+
+    @staticmethod
+    def save_translit_model(model_obj, translit_model_fname): 
+        with open(translit_model_fname,'w') as translit_model_file: 
+            pickle.dump(model_obj,translit_model_file)
 
     def __init__(self):
 
@@ -36,14 +107,25 @@ class TransliterationDecoder:
         self._lm_order=order
         self._translit_model=translit_model
 
+        e_vocabsize=len(self._translit_model.e_id_sym_map)
+        self._lm_cache=np.ones(  (e_vocabsize,e_vocabsize)  )*-1.0
+
+    #def _bigram_score(self,hist_id,cur_id):
+    #    """
+    #    """
+    #    bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
+    #                            self._translit_model.e_id_sym_map[cur_id])
+    #    return math.pow( 10 , srilm.getBigramProb(self._lm_model,bigram.encode('utf-8')) )
 
     def _bigram_score(self,hist_id,cur_id):
         """
         """
-        bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
-                                self._translit_model.e_id_sym_map[cur_id])
-        #bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[cur_id], self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>')
-        return math.pow( 10 , srilm.getBigramProb(self._lm_model,bigram.encode('utf-8')) )
+        if self._lm_cache[hist_id,cur_id]==-1:
+            bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
+                                    self._translit_model.e_id_sym_map[cur_id])
+            self._lm_cache[hist_id,cur_id]=math.pow( 10 , srilm.getBigramProb(self._lm_model,bigram.encode('utf-8')) )
+
+        return self._lm_cache[hist_id,cur_id]
 
     def _get_param_value( self, e_id, f_input_chars ): 
         if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
@@ -51,6 +133,7 @@ class TransliterationDecoder:
         else:
             return 0.0
 
+    #@profile
     def _decode_internal(self,f_input_word): 
         """
             bigram language model 
@@ -81,7 +164,6 @@ class TransliterationDecoder:
             score_matrix[0,k]= sum ( map ( log_z  ,
                                   #    LM score                    translition matrix score
                                [ self._bigram_score(-1,k) , self._get_param_value(  k , f_input_word[0]) ] 
-                               #[  self._get_param_value(  k , f_input_word[0]) ] 
                          ) 
                        )
 
@@ -596,15 +678,39 @@ def generate_char_set(fname):
     return list(char_set)
 
 if __name__=='__main__': 
-    
-    #fcorpus_fname=sys.argv[1]
-    #ecorpus_fname=sys.argv[2]
-    #model_dir=sys.argv[3]
-    #lm_fname=sys.argv[4]
-    #test_fcorpus_fname=sys.argv[5]
-    #test_ecorpus_fname=sys.argv[6]
 
-    #########  Supervised training
+    
+    #####  model information
+    ##  F: source  E: target
+
+    ## file listing set of characters in the source
+    fcfname='kannada/En-Ka-News_EnglishLabels_KannadaRows_EnglishColumns_linear_'
+    ## file listing set of characters in the target
+    ecfname='kannada/En-Ka-News_KannadaLabels_KannadaRows_EnglishColumns_linear_'
+    ## file listing alignment from source to target
+    ##  target is along the rows, source is along the columns
+    alignmentfname='kannada/En-Ka-News_CrossEntropy_AlignmentMatrix_KannadaRows_EnglishColumns_linear_'
+    ### bigram- target language model in APRA  model. Note: decoding currently supports only bigram models
+    lm_fname='kannada/Ka-2g.lm'
+    
+    ##### testset information 
+    test_fcorpus_fname='kannada/test.En'
+    test_ecorpus_fname='kannada/test.Ka'
+
+    tm_model=TransliterationModel.construct_transliteration_model(fcfname,ecfname,alignmentfname)
+    lm_model=load_lm_model(lm_fname)
+
+    decoder=TransliterationDecoder(tm_model,lm_model)
+    decoder.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
+
+    ##fcorpus_fname=sys.argv[1]
+    ##ecorpus_fname=sys.argv[2]
+    ##model_dir=sys.argv[3]
+    ##lm_fname=sys.argv[4]
+    ##test_fcorpus_fname=sys.argv[5]
+    ##test_ecorpus_fname=sys.argv[6]
+
+    ###########  Supervised training
     #data_dir='/home/development/anoop/experiments/unsupervised_transliterator/data'
     #parallel_dir=data_dir+'/'+'en-hi'
 
@@ -616,35 +722,42 @@ if __name__=='__main__':
     #test_fcorpus_fname='test.en'
     #test_ecorpus_fname='test.hi'
 
-    #em=UnsupervisedTransliteratorTrainer(lm_fname)
-    #em.em_supervised_train(read_parallel_corpus(fcorpus_fname,ecorpus_fname))
+    #lm_model=load_lm_model(lm_fname)
 
-    #em.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
+    ##em=UnsupervisedTransliteratorTrainer(lm_model)
+    ##em.em_supervised_train(read_parallel_corpus(fcorpus_fname,ecorpus_fname))
+    ##TransliterationModel.save_translit_model(em._translit_model,'translit.model')
 
+    #
+    ##decoder=TransliterationDecoder(em._translit_model,em._lm_model)
+    #decoder=TransliterationDecoder(TransliterationModel.load_translit_model('translit.model'),load_lm_model(lm_fname))
+    #with timer.Timer(True) as t: 
+    #    decoder.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
+    #print 'Time for decoding: '.format(t.secs)
         
 
-    ########  Unsupervised training
-    data_dir='/home/development/anoop/experiments/unsupervised_transliterator/data'
-    #parallel_dir=data_dir+'/'+'en-hi'
+    #########  Unsupervised training
+    #data_dir='/home/development/anoop/experiments/unsupervised_transliterator/data'
+    ##parallel_dir=data_dir+'/'+'en-hi'
 
-    #fcorpus_fname=parallel_dir+'/'+'train.en'
-    #ecorpus_fname=parallel_dir+'/'+'train.hi'
-    #test_fcorpus_fname=parallel_dir+'/'+'test.en'
-    #test_ecorpus_fname=parallel_dir+'/'+'test.hi'
+    ##fcorpus_fname=parallel_dir+'/'+'train.en'
+    ##ecorpus_fname=parallel_dir+'/'+'train.hi'
+    ##test_fcorpus_fname=parallel_dir+'/'+'test.en'
+    ##test_ecorpus_fname=parallel_dir+'/'+'test.hi'
 
-    fcorpus_fname='10.en'
-    ecorpus_fname='10.hi'
-    test_fcorpus_fname='10.en'
-    test_ecorpus_fname='10.hi'
+    #fcorpus_fname='10.en'
+    #ecorpus_fname='10.hi'
+    #test_fcorpus_fname='10.en'
+    #test_ecorpus_fname='10.hi'
 
-    lm_fname=data_dir+'/'+'hi-2g.lm'
+    #lm_fname=data_dir+'/'+'hi-2g.lm'
 
-    lm_model=load_lm_model(lm_fname)
+    #lm_model=load_lm_model(lm_fname)
 
-    em=UnsupervisedTransliteratorTrainer(lm_model)
-    em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname))
+    #em=UnsupervisedTransliteratorTrainer(lm_model)
+    #em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname))
 
-    decoder=TransliterationDecoder(em._translit_model,em._lm_model)
-    decoder.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
+    #decoder=TransliterationDecoder(em._translit_model,em._lm_model)
+    #decoder.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
 
 
