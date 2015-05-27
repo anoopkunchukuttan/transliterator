@@ -225,7 +225,7 @@ class UnsupervisedTransliteratorTrainer:
             tgt=self._priorparams['tgt']
 
             for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
-                offset=ord(e_sym)-langinfo.SCRIPT_RANGES[src][0]
+                offset=ord(e_sym)-langinfo.SCRIPT_RANGES[tgt][0]
                 if offset >=langinfo.COORDINATED_RANGE_START_INCLUSIVE and offset <= langinfo.COORDINATED_RANGE_END_INCLUSIVE:
                     f_sym_x=UnicodeIndicTransliterator.transliterate(e_sym,tgt,src)
                     if f_sym_x in self._translit_model.f_sym_id_map: 
