@@ -43,7 +43,7 @@ class UnsupervisedTransliteratorTrainer:
     def __init__(self, config_params, lm_model=None):
         
         ############ load config file 
-        self.config=config_params
+        self._config=config_params
 
         ########### transliteration model 
         self._translit_model=TransliterationModel()
@@ -135,7 +135,7 @@ class UnsupervisedTransliteratorTrainer:
         ne=len(e_word)
     
         alignment_preseqs=list(it.ifilter( lambda x: sum(x)==nf, 
-                                it.product(self.config['allowed_mappings'] ,repeat=ne)
+                                it.product(self._config['allowed_mappings'] ,repeat=ne)
                           ))
     
         wpairs_aligns=[]
@@ -293,13 +293,16 @@ class UnsupervisedTransliteratorTrainer:
         n=0
         for e_id in range(len(self._translit_model.e_sym_id_map)): 
             for f_id in range(len(self._translit_model.f_sym_id_map)): 
-                if math.fabs(self._translit_model.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= self.config['conv_epsilon']:
+                if math.fabs(self._translit_model.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= self._config['conv_epsilon']:
                     converged=False
                     break;
                 n=n+1
 
         print 'Checked {} parameters for convergence'.format(n)
         return converged
+
+    #def _debug_log(self): 
+    #    if self._
 
     def em_supervised_train(self,word_pairs): 
         """
@@ -315,10 +318,11 @@ class UnsupervisedTransliteratorTrainer:
             niter+=1
 
             #self.print_params()
+            #self._debug_log()
             print '=== Iteration {} completed ==='.format(niter)
 
             # check for end of process 
-            if niter>=self.config['train_iteration'] or self._has_converged():
+            if niter>=self._config['train_iteration'] or self._has_converged():
                 break
     
             # E-step 
@@ -448,7 +452,7 @@ class UnsupervisedTransliteratorTrainer:
             print '=== Iteration {} completed ==='.format(niter)
 
             # check for end of process 
-            if niter>= self.config['train_iteration']  or self._has_converged():
+            if niter>= self._config['train_iteration']  or self._has_converged():
                 break
     
             ######  E-step ####
