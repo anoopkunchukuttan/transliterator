@@ -1,0 +1,22 @@
+## number of EM training iterations 
+train_iteration: 100 
+
+# convergence criteria for EM. Each parameter value should be with the tolerance limit wrt previous iteration     
+conv_epsilon: 0.005
+
+# allowed mapping, target to source     
+allowed_mappings: 
+    - 1 
+    - 2 
+    
+# Dirichlet prior for transliteration probabilities     
+# 
+
+# configuration: one of none/random/file
+# for configuration random, it will have a scale parameter 'scale'. The base measure is generated randomly in the interval (0,1)
+
+prior_config: 
+    random: 
+     scale: 1.0
+#    zero:          
+

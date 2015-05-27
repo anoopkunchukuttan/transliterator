@@ -1,6 +1,7 @@
 import itertools as it
 import codecs
 import math
+import yaml
 
 import srilm
 
@@ -16,6 +17,15 @@ def load_lm_model(lm_fname, order=2):
     lm_model=srilm.initLM(order)
     srilm.readLM(lm_model,lm_fname)    
     return lm_model
+
+def read_yaml_file(fname):
+    """
+        read yaml configuration file 
+    """
+    cf=open(fname,'r')
+    config=yaml.load(cf.read())
+    cf.close()
+    return config 
 
 ### Corpus reading utilities 
 

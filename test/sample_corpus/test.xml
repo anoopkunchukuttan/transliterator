@@ -1,0 +1,513 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    
+    <TransliterationCorpus 
+        CorpusFormat="UTF-8" 
+        CorpusID="test" 
+        CorpusSize="100" 
+        CorpusType="Dev" 
+        NameSource="Mixed" 
+    	SourceLang = "En"
+    	TargetLang = "Hi">
+
+<Name ID="1">
+<SourceName>SUNDRAM</SourceName>
+<TargetName ID="1">सुंदरम</TargetName>
+</Name>
+
+<Name ID="2">
+<SourceName>SUPRABHA</SourceName>
+<TargetName ID="1">सुप्रभा</TargetName>
+</Name>
+
+<Name ID="3">
+<SourceName>SURAMA</SourceName>
+<TargetName ID="1">सुरमा</TargetName>
+</Name>
+
+<Name ID="4">
+<SourceName>SURBAHAR</SourceName>
+<TargetName ID="1">सुरबहार</TargetName>
+</Name>
+
+<Name ID="5">
+<SourceName>SURINDERJEET</SourceName>
+<TargetName ID="1">सुरिन्दरजीत</TargetName>
+</Name>
+
+<Name ID="6">
+<SourceName>SURYAKANTI</SourceName>
+<TargetName ID="1">सूर्यकांति</TargetName>
+</Name>
+
+<Name ID="7">
+<SourceName>SUSHANTI</SourceName>
+<TargetName ID="1">सुशांति</TargetName>
+</Name>
+
+<Name ID="8">
+<SourceName>SUSHIL</SourceName>
+<TargetName ID="1">सुशील</TargetName>
+</Name>
+
+<Name ID="9">
+<SourceName>SWARAJ</SourceName>
+<TargetName ID="1">स्वराज</TargetName>
+</Name>
+
+<Name ID="10">
+<SourceName>SWARG</SourceName>
+<TargetName ID="1">स्वर्ग</TargetName>
+</Name>
+
+<Name ID="11">
+<SourceName>SYLVESTER</SourceName>
+<TargetName ID="1">सिल्वेस्टर</TargetName>
+</Name>
+
+<Name ID="12">
+<SourceName>SYLVIE</SourceName>
+<TargetName ID="1">सिल्वी</TargetName>
+</Name>
+
+<Name ID="13">
+<SourceName>TACONIC</SourceName>
+<TargetName ID="1">टैकॉनिक</TargetName>
+</Name>
+
+<Name ID="14">
+<SourceName>TAHOOR</SourceName>
+<TargetName ID="1">तहूर</TargetName>
+</Name>
+
+<Name ID="15">
+<SourceName>TALISMA</SourceName>
+<TargetName ID="1">तलीस्मा</TargetName>
+</Name>
+
+<Name ID="16">
+<SourceName>TALWAR</SourceName>
+<TargetName ID="1">तलवार</TargetName>
+</Name>
+
+<Name ID="17">
+<SourceName>TAMALIKA</SourceName>
+<TargetName ID="1">तमालिका</TargetName>
+</Name>
+
+<Name ID="18">
+<SourceName>TAMIL</SourceName>
+<TargetName ID="1">‍तमिल</TargetName>
+</Name>
+
+<Name ID="19">
+<SourceName>TANKERS</SourceName>
+<TargetName ID="1">टैंकर्स</TargetName>
+</Name>
+
+<Name ID="20">
+<SourceName>TANWIR</SourceName>
+<TargetName ID="1">तनवीर</TargetName>
+</Name>
+
+<Name ID="21">
+<SourceName>TAPTI</SourceName>
+<TargetName ID="1">ताप्ती</TargetName>
+</Name>
+
+<Name ID="22">
+<SourceName>TASLIM</SourceName>
+<TargetName ID="1">तस्लीम</TargetName>
+</Name>
+
+<Name ID="23">
+<SourceName>TAUFEEQ</SourceName>
+<TargetName ID="1">तौफीक</TargetName>
+</Name>
+
+<Name ID="24">
+<SourceName>TAVLEEN</SourceName>
+<TargetName ID="1">तवलीन</TargetName>
+</Name>
+
+<Name ID="25">
+<SourceName>TELEFONICA</SourceName>
+<TargetName ID="1">टेलीफ़ोनिका</TargetName>
+</Name>
+
+<Name ID="26">
+<SourceName>TEMPELHOF</SourceName>
+<TargetName ID="1">टेंपलहॉफ</TargetName>
+</Name>
+
+<Name ID="27">
+<SourceName>TEZAAB</SourceName>
+<TargetName ID="1">तेज़ाब</TargetName>
+</Name>
+
+<Name ID="28">
+<SourceName>THAKKAR</SourceName>
+<TargetName ID="1">ठक्कर</TargetName>
+</Name>
+
+<Name ID="29">
+<SourceName>THETA</SourceName>
+<TargetName ID="1">थीटा</TargetName>
+</Name>
+
+<Name ID="30">
+<SourceName>THUNDERCHILD</SourceName>
+<TargetName ID="1">थंडरचाइल्ड</TargetName>
+</Name>
+
+<Name ID="31">
+<SourceName>TIBESTI</SourceName>
+<TargetName ID="1">तिबेस्ती</TargetName>
+</Name>
+
+<Name ID="32">
+<SourceName>TIKOLO</SourceName>
+<TargetName ID="1">टिकॉलो</TargetName>
+</Name>
+
+<Name ID="33">
+<SourceName>TITICACA</SourceName>
+<TargetName ID="1">टिटिकाका</TargetName>
+</Name>
+
+<Name ID="34">
+<SourceName>TOIYABE</SourceName>
+<TargetName ID="1">तोईयाबे</TargetName>
+</Name>
+
+<Name ID="35">
+<SourceName>TONGO</SourceName>
+<TargetName ID="1">टॉगो</TargetName>
+</Name>
+
+<Name ID="36">
+<SourceName>TREHAN</SourceName>
+<TargetName ID="1">त्रेहन</TargetName>
+</Name>
+
+<Name ID="37">
+<SourceName>TREND</SourceName>
+<TargetName ID="1">ट्रेंड</TargetName>
+</Name>
+
+<Name ID="38">
+<SourceName>UBEJA</SourceName>
+<TargetName ID="1">उबेजा</TargetName>
+</Name>
+
+<Name ID="39">
+<SourceName>UGAANI</SourceName>
+<TargetName ID="1">उगाणी</TargetName>
+</Name>
+
+<Name ID="40">
+<SourceName>UMAPATI</SourceName>
+<TargetName ID="1">उमापति</TargetName>
+</Name>
+
+<Name ID="41">
+<SourceName>UNITECH</SourceName>
+<TargetName ID="1">यूनिटेक</TargetName>
+</Name>
+
+<Name ID="42">
+<SourceName>UTTAM</SourceName>
+<TargetName ID="1">उत्तम</TargetName>
+</Name>
+
+<Name ID="43">
+<SourceName>VAAGHMARE</SourceName>
+<TargetName ID="1">वाघमारे</TargetName>
+</Name>
+
+<Name ID="44">
+<SourceName>VAIRAJ</SourceName>
+<TargetName ID="1">वैराज</TargetName>
+</Name>
+
+<Name ID="45">
+<SourceName>VANADIUM</SourceName>
+<TargetName ID="1">वेनडियम</TargetName>
+</Name>
+
+<Name ID="46">
+<SourceName>VANDANA</SourceName>
+<TargetName ID="1">वन्दना</TargetName>
+</Name>
+
+<Name ID="47">
+<SourceName>VANGUARD</SourceName>
+<TargetName ID="1">वैनगार्ड</TargetName>
+</Name>
+
+<Name ID="48">
+<SourceName>VARANASI</SourceName>
+<TargetName ID="1">वाराणसी</TargetName>
+</Name>
+
+<Name ID="49">
+<SourceName>VARYAG</SourceName>
+<TargetName ID="1">वर्याग</TargetName>
+</Name>
+
+<Name ID="50">
+<SourceName>VASOGEN</SourceName>
+<TargetName ID="1">वैसोजेन</TargetName>
+</Name>
+
+<Name ID="51">
+<SourceName>VASUDEV</SourceName>
+<TargetName ID="1">वसुदेव</TargetName>
+</Name>
+
+<Name ID="52">
+<SourceName>VEERESHWAR</SourceName>
+<TargetName ID="1">वीरेश्वर</TargetName>
+</Name>
+
+<Name ID="53">
+<SourceName>VELADERO</SourceName>
+<TargetName ID="1">वेलाडेरो</TargetName>
+</Name>
+
+<Name ID="54">
+<SourceName>VENKATARAMANA</SourceName>
+<TargetName ID="1">वेंकटरमन</TargetName>
+</Name>
+
+<Name ID="55">
+<SourceName>VENKATESH</SourceName>
+<TargetName ID="1">वेंकटेश</TargetName>
+</Name>
+
+<Name ID="56">
+<SourceName>VIACOM</SourceName>
+<TargetName ID="1">वियाकॉम</TargetName>
+</Name>
+
+<Name ID="57">
+<SourceName>VIBHA</SourceName>
+<TargetName ID="1">विभा</TargetName>
+</Name>
+
+<Name ID="58">
+<SourceName>VIBHOR</SourceName>
+<TargetName ID="1">विभोर</TargetName>
+</Name>
+
+<Name ID="59">
+<SourceName>VIDYALAYA</SourceName>
+<TargetName ID="1">विद्यालय</TargetName>
+</Name>
+
+<Name ID="60">
+<SourceName>VIDYUL</SourceName>
+<TargetName ID="1">विद्युल</TargetName>
+</Name>
+
+<Name ID="61">
+<SourceName>VIJETA</SourceName>
+<TargetName ID="1">विजेता</TargetName>
+</Name>
+
+<Name ID="62">
+<SourceName>VILJOEN</SourceName>
+<TargetName ID="1">विल्जोएन</TargetName>
+</Name>
+
+<Name ID="63">
+<SourceName>VIMAL</SourceName>
+<TargetName ID="1">विमल</TargetName>
+</Name>
+
+<Name ID="64">
+<SourceName>VIRGIL</SourceName>
+<TargetName ID="1">वर्जिल</TargetName>
+</Name>
+
+<Name ID="65">
+<SourceName>VISHOK</SourceName>
+<TargetName ID="1">विशोक</TargetName>
+</Name>
+
+<Name ID="66">
+<SourceName>VISHWAMITRA</SourceName>
+<TargetName ID="1">विश्वामित्र</TargetName>
+</Name>
+
+<Name ID="67">
+<SourceName>VISHWNATH</SourceName>
+<TargetName ID="1">विश्वनाथ</TargetName>
+</Name>
+
+<Name ID="68">
+<SourceName>VIVIAN</SourceName>
+<TargetName ID="1">विवियन</TargetName>
+</Name>
+
+<Name ID="69">
+<SourceName>VONDA</SourceName>
+<TargetName ID="1">वोंडा</TargetName>
+</Name>
+
+<Name ID="70">
+<SourceName>VORPOMMERN</SourceName>
+<TargetName ID="1">वोर्पोमेर्न</TargetName>
+</Name>
+
+<Name ID="71">
+<SourceName>VRAHAT</SourceName>
+<TargetName ID="1">वृहत</TargetName>
+</Name>
+
+<Name ID="72">
+<SourceName>VYAVHARE</SourceName>
+<TargetName ID="1">व्यवहारे</TargetName>
+</Name>
+
+<Name ID="73">
+<SourceName>VYTIS</SourceName>
+<TargetName ID="1">वायटिस</TargetName>
+</Name>
+
+<Name ID="74">
+<SourceName>WACHHAR</SourceName>
+<TargetName ID="1">वच्चर</TargetName>
+</Name>
+
+<Name ID="75">
+<SourceName>WAKEEL</SourceName>
+<TargetName ID="1">वकील</TargetName>
+</Name>
+
+<Name ID="76">
+<SourceName>WALGREEN</SourceName>
+<TargetName ID="1">वॉलग्रीन</TargetName>
+</Name>
+
+<Name ID="77">
+<SourceName>WALSH</SourceName>
+<TargetName ID="1">वॉल्श</TargetName>
+</Name>
+
+<Name ID="78">
+<SourceName>WATERPHONE</SourceName>
+<TargetName ID="1">वाटरफोन</TargetName>
+</Name>
+
+<Name ID="79">
+<SourceName>WATUMOHAI</SourceName>
+<TargetName ID="1">वाटुमोहाई</TargetName>
+</Name>
+
+<Name ID="80">
+<SourceName>WESTSIDE</SourceName>
+<TargetName ID="1">वेस्टसाइड</TargetName>
+</Name>
+
+<Name ID="81">
+<SourceName>WHITBREAD</SourceName>
+<TargetName ID="1">व्हिटब्रेड</TargetName>
+</Name>
+
+<Name ID="82">
+<SourceName>WICKRAMASINGHE</SourceName>
+<TargetName ID="1">विक्रमासिंघे</TargetName>
+</Name>
+
+<Name ID="83">
+<SourceName>WIDAD</SourceName>
+<TargetName ID="1">विदाद</TargetName>
+</Name>
+
+<Name ID="84">
+<SourceName>WILMER</SourceName>
+<TargetName ID="1">विल्मर</TargetName>
+</Name>
+
+<Name ID="85">
+<SourceName>WISMA</SourceName>
+<TargetName ID="1">विस्मा</TargetName>
+</Name>
+
+<Name ID="86">
+<SourceName>WITTELSBACH</SourceName>
+<TargetName ID="1">विट्टल्सबैक</TargetName>
+</Name>
+
+<Name ID="87">
+<SourceName>WOLLASTON</SourceName>
+<TargetName ID="1">वॉलास्टन</TargetName>
+</Name>
+
+<Name ID="88">
+<SourceName>XENON</SourceName>
+<TargetName ID="1">ज़ेनॉन</TargetName>
+</Name>
+
+<Name ID="89">
+<SourceName>XINGU</SourceName>
+<TargetName ID="1">ज़ींगू</TargetName>
+</Name>
+
+<Name ID="90">
+<SourceName>YAARON</SourceName>
+<TargetName ID="1">यारों</TargetName>
+</Name>
+
+<Name ID="91">
+<SourceName>YADAGIRIGUTTA</SourceName>
+<TargetName ID="1">यादगिरीगुट्टा</TargetName>
+</Name>
+
+<Name ID="92">
+<SourceName>YAGHNAM</SourceName>
+<TargetName ID="1">यग़नाम</TargetName>
+</Name>
+
+<Name ID="93">
+<SourceName>YAMINI</SourceName>
+<TargetName ID="1">यमिनी</TargetName>
+</Name>
+
+<Name ID="94">
+<SourceName>YELLOWSTONE</SourceName>
+<TargetName ID="1">येल्लोस्टोन</TargetName>
+</Name>
+
+<Name ID="95">
+<SourceName>ZAHIRAH</SourceName>
+<TargetName ID="1">ज़हिराह</TargetName>
+</Name>
+
+<Name ID="96">
+<SourceName>ZALEEL</SourceName>
+<TargetName ID="1">ज़लील</TargetName>
+</Name>
+
+<Name ID="97">
+<SourceName>ZAMBEZI</SourceName>
+<TargetName ID="1">ज़ाम्बेज़ी</TargetName>
+</Name>
+
+<Name ID="98">
+<SourceName>ZARRAH</SourceName>
+<TargetName ID="1">ज़र्राह</TargetName>
+</Name>
+
+<Name ID="99">
+<SourceName>ZESERS</SourceName>
+<TargetName ID="1">ज़ेसर्स</TargetName>
+</Name>
+
+<Name ID="100">
+<SourceName>ZLOTY</SourceName>
+<TargetName ID="1">ज़्लॉटी</TargetName>
+</Name>
+
+
+</TransliterationCorpus>

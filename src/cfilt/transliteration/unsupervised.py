@@ -5,12 +5,17 @@ from collections import defaultdict
 import numpy as np, math
 import pandas as pd
 import random
+import yaml 
 
 import srilm
 
 from cfilt.transliteration.decoder import *
 from cfilt.transliteration.parallel_decoder import *
 from cfilt.transliteration.utilities import *
+
+from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTransliterator 
+from indicnlp import langinfo 
+
 
 # Alignment is a list of 'charseq_pairs'
 # represented as 'src_seq|tgtseq'
@@ -33,19 +38,17 @@ from cfilt.transliteration.utilities import *
 
 ####
     
-MAX_ITER=100
-EPSILON=0.005
-
 class UnsupervisedTransliteratorTrainer: 
 
-    ## ALLOWED mappings
-    ALLOWED_MAPPINGS=[1,2]
-   
-    def __init__(self,lm_model):
+    def __init__(self, config_params, lm_model=None):
+        
+        ############ load config file 
+        self.config=config_params
 
+        ########### transliteration model 
         self._translit_model=TransliterationModel()
 
-        ####  corpus information
+        ############  corpus information
         # Each word-pair is indexed by its position in the input corpus (starting at 0)
 
         # list of all possible alignments for each word pair 
@@ -54,20 +57,32 @@ class UnsupervisedTransliteratorTrainer:
         # list of weights for all possible alignments for a word pair 
         self.wpairs_weights=[]
 
-        ##### parameter information
+        ############   parameter information
 
         # for each parameter (which corresponds to a point alignment), the list of occurences in of this point alignment all possible (wordpair,alignment) locations in the corpus
         self.param_occurence_info=defaultdict(lambda :defaultdict(list))
 
         # Parameter values in the previous iteration 
-        self.prev_param_values={}
+        self.prev_param_values=None
 
-        #### Language model 
+        ############# Language model 
         self._lm_model=lm_model
 
-        ### Hyper parameters 
+        #############  Hyper parameters 
+        # initialize hyper parameters 
         # Each of the P(f|e) distributions is governed by a Dirichlet Prior alpha[e,f] for each value for e and f
-        self._alpha={}
+
+        # scale paramter     
+        self._scale=1.0
+        self._alpha=None
+
+        if len(config_params['prior_config'].keys())>1: 
+            raise Exception('More than one configuration for prior specified')
+        elif len(config_params['prior_config'].keys())<1: 
+            raise Exception('No prior specified')
+        
+        self._priormethod,self._priorparams=config_params['prior_config'].iteritems().next()
+
 
     def print_obj(self): 
 
@@ -120,7 +135,7 @@ class UnsupervisedTransliteratorTrainer:
         ne=len(e_word)
     
         alignment_preseqs=list(it.ifilter( lambda x: sum(x)==nf, 
-                                it.product(UnsupervisedTransliteratorTrainer.ALLOWED_MAPPINGS,repeat=ne)
+                                it.product(self.config['allowed_mappings'] ,repeat=ne)
                           ))
     
         wpairs_aligns=[]
@@ -191,7 +206,32 @@ class UnsupervisedTransliteratorTrainer:
         # for e
         for s,i in self._translit_model.e_sym_id_map.iteritems():
             self._translit_model.e_id_sym_map[i]=s
-    
+   
+    def _init_dirichlet_priors(self): 
+        print 'Prior Method: {}'.format(self._priormethod)
+
+        if self._priormethod=='random':
+            self._scale=self._priorparams['scale']
+            self._alpha=np.random.rand(len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map))
+            self._alpha*=self._priorparams['scale']
+            print 'Scale: {}'.format(self._scale)
+
+        elif self._priormethod=='zero':
+            self._alpha=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
+
+        elif self._priormethod=='indic_mapping':
+            self._alpha=np.random.rand(len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map))
+            src=self._priorparams['src']
+            tgt=self._priorparams['tgt']
+
+            for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
+                offset=ord(e_sym)-langinfo.SCRIPT_RANGES[src][0]
+                if offset >=langinfo.COORDINATED_RANGE_START_INCLUSIVE and offset <= langinfo.COORDINATED_RANGE_END_INCLUSIVE:
+                    f_sym_x=UnicodeIndicTransliterator.transliterate(e_sym,tgt,src)
+                    if f_sym_x in self._translit_model.f_sym_id_map: 
+                        self._alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=self._priorparams['base_measure_mapping_exists']
+                        self._alpha[e_id,:]*=self._priorparams['scale_factor_mapping_exists']
+
     def _initialize_parameter_structures(self): 
         """
     
@@ -206,13 +246,9 @@ class UnsupervisedTransliteratorTrainer:
         # initialize transliteration probabilities 
         self._translit_model.param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
         self.prev_param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
-   
-        # initialize hyper parameters 
-        ## random prior
-        #self._alpha=np.random.rand(len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map))
 
-        ##no prior
-        self._alpha=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
+        # initialize the Dirichlet Prior values 
+        self._init_dirichlet_priors()
 
     def _m_step(self): 
         
@@ -254,12 +290,15 @@ class UnsupervisedTransliteratorTrainer:
         """
         converged=True
 
+        n=0
         for e_id in range(len(self._translit_model.e_sym_id_map)): 
             for f_id in range(len(self._translit_model.f_sym_id_map)): 
-                if math.fabs(self._translit_model.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= EPSILON:
+                if math.fabs(self._translit_model.param_values[e_id,f_id]-self.prev_param_values[e_id,f_id]) >= self.config['conv_epsilon']:
                     converged=False
                     break;
+                n=n+1
 
+        print 'Checked {} parameters for convergence'.format(n)
         return converged
 
     def em_supervised_train(self,word_pairs): 
@@ -269,7 +308,6 @@ class UnsupervisedTransliteratorTrainer:
         self._create_alignment_database(word_pairs)
         self._initialize_parameter_structures()
     
-        MAX_ITER=100
         niter=0
         while(True):
             # M-step
@@ -280,7 +318,7 @@ class UnsupervisedTransliteratorTrainer:
             print '=== Iteration {} completed ==='.format(niter)
 
             # check for end of process 
-            if niter>=MAX_ITER or self._has_converged():
+            if niter>=self.config['train_iteration'] or self._has_converged():
                 break
     
             # E-step 
@@ -293,10 +331,6 @@ class UnsupervisedTransliteratorTrainer:
         #    for f_id in range(len(self._translit_model.f_sym_id_map)): 
         #        #print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
         #        print u"P({}|{})={}".format(f_id,e_id,self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
-
-    ##########################
-    ### Decoding function #####
-    ##########################
 
     ############################################
     ### Unsupervised training functions ########
@@ -340,7 +374,7 @@ class UnsupervisedTransliteratorTrainer:
         self.prev_param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
 
         # initialize hyper parameters 
-        self._alpha=np.random.rand(len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map))
+        self._init_dirichlet_priors()
 
     def _prepare_corpus_unsupervised(self,word_pairs): 
         """
@@ -414,7 +448,7 @@ class UnsupervisedTransliteratorTrainer:
             print '=== Iteration {} completed ==='.format(niter)
 
             # check for end of process 
-            if niter>=MAX_ITER or self._has_converged():
+            if niter>= self.config['train_iteration']  or self._has_converged():
                 break
     
             ######  E-step ####
@@ -486,10 +520,10 @@ if __name__=='__main__':
     #fcorpus_fname=parallel_dir+'/'+'train.en'
     #ecorpus_fname=parallel_dir+'/'+'train.hi'
     #lm_fname=data_dir+'/'+'hi-2g.lm'
-    ##test_fcorpus_fname=parallel_dir+'/'+'test.en'
-    ##test_ecorpus_fname=parallel_dir+'/'+'test.hi'
-    #test_fcorpus_fname='test.en'
-    #test_ecorpus_fname='test.hi'
+    ###test_fcorpus_fname=parallel_dir+'/'+'test.en'
+    ###test_ecorpus_fname=parallel_dir+'/'+'test.hi'
+    ##test_fcorpus_fname='test.en'
+    ##test_ecorpus_fname='test.hi'
 
     #lm_model=load_lm_model(lm_fname)
 
