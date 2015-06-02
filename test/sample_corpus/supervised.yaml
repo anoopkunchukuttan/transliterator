@@ -8,15 +8,45 @@ conv_epsilon: 0.005
 allowed_mappings: 
     - 1 
     - 2 
-    
-# Dirichlet prior for transliteration probabilities     
-# 
 
-# configuration: one of none/random/file
-# for configuration random, it will have a scale parameter 'scale'. The base measure is generated randomly in the interval (0,1)
-
-prior_config: 
+## EM parameter initialization
+# Optional
+# one of random/dirichlet/uniform
+# defaults to random
+# if 'dirichlet' is specified, then 'prior_config' key must be present and the appropriate method defined
+initialization: 
+    ## random prior 
     random: 
      scale: 1.0
-#    zero:          
+         ### uniform 
+         #uniform: 
+         ### based on rule based mapping for Indic scripts 
+         #indic_mapping:
+         #     scale_factor_mapping_exists: 10.0
+         #     base_measure_mapping_exists: 1000.0    
+         #     src: pa
+         #     tgt: hi
+    
 
+## Dirichlet prior for transliteration probabilities     
+# Optional
+# prior config can take one of the following values for key(method): random/zero/indic_mapping. 
+# If 'prior_config' is specified, then the method and specs must be listed
+
+prior_config: 
+    ## random prior 
+    random: 
+     scale: 1.0
+         ### based on rule based mapping for Indic scripts 
+         #indic_mapping:
+         #     scale_factor_mapping_exists: 10.0
+         #     base_measure_mapping_exists: 1000.0    
+         #     src: pa
+         #     tgt: hi
+
+
+##  The debug log directory
+## Optional
+## No log generated if this key is absent 
+log_dir: /home/development/anoop/experiments/unsupervised_transliterator/src/transliterator/test/sample_workspace/log
+        
