@@ -1,10 +1,13 @@
 import os, sys, re, itertools, codecs 
 import xml.etree.ElementTree as ET
 #from indicnlp.normalize.indic_normalize import IndicNormalizerFactory
-import numpy as np, math
+import numpy as np, math, scipy
 import random
 import shutil
 from collections import defaultdict 
+
+from cfilt.transliteration.decoder import *
+from cfilt.transliteration.utilities import *
 
 #infname=sys.argv[1]
 #outdir=sys.argv[2]
@@ -579,6 +582,44 @@ def filter_brahminet_length_ratio(datadir,src,tgt,lratio,std):
     traintgtfile.close()
 
 
+def extract_common_msr_corpus(c0_dir, c1_dir, c0_lang, c1_lang, outdir ): 
+
+    data_cache=defaultdict(lambda : [set(),set()])
+
+    # read corpus 0
+    en0_f=codecs.open(c0_dir+'/train.En','r','utf-8')
+    l0_f=codecs.open(c0_dir+'/train.'+c0_lang,'r','utf-8')
+
+    for en_l,c_l in itertools.izip(iter(en0_f),iter(l0_f)): 
+        data_cache[en_l.strip()][0].add(c_l.strip())
+
+    en0_f.close()
+    l0_f.close()
+
+    # read corpus 1                
+    en1_f=codecs.open(c1_dir+'/train.En','r','utf-8')
+    l1_f=codecs.open(c1_dir+'/train.'+c1_lang,'r','utf-8')
+
+    for en_l,c_l in itertools.izip(iter(en1_f),iter(l1_f)): 
+        data_cache[en_l.strip()][1].add(c_l.strip())
+
+    en1_f.close()
+    l1_f.close()
+
+    # write the common data
+    cc0_f=codecs.open(outdir+'/train.'+c0_lang,'w','utf-8')
+    cc1_f=codecs.open(outdir+'/train.'+c1_lang,'w','utf-8')
+
+    for en_l, other_l_lists in data_cache.iteritems(): 
+        if len(other_l_lists[0]) >0 and len(other_l_lists[1]) >0 : 
+            #print 'inside: {}'.format(len(other_l_lists[0])*len(other_l_lists[1]))
+            for c0_str, c1_str in itertools.product( other_l_lists[0] , other_l_lists[1] ):  
+                cc0_f.write(c0_str +u'\n') 
+                cc1_f.write(c1_str +u'\n') 
+
+    cc0_f.close()
+    cc1_f.close()
+
 def count_common_msr_corpus(en1_fname,en2_fname): 
 
     with codecs.open(en1_fname,'r','utf-8') as en1_file:
@@ -734,23 +775,32 @@ def correct_vowels(nbest_fname,lang):
 
 
 ### Analysis methods 
-def compute_entropy(giza_lex_fname):
-    prob_map=defaultdict(list)
-    entropy_map={}
-
-    with codecs.open(giza_lex_fname,'r','utf-8') as giza_lex_file: 
-        for line in iter(giza_lex_file):
-            c1,c2,prob=line.strip().split(' ')
-            prob=float(prob)
-            prob_map[c2].append(prob)
-
-    for c2,prob2 in prob_map.iteritems():
-        entropy_map[c2]=-sum([ p*math.log(p)  for p in prob2 ])
-
-    # compute average entropy
-    ave_entropy=float(sum([y for x,y in entropy_map.iteritems()]))/float(len(entropy_map))
-    print ave_entropy
+#def compute_entropy(giza_lex_fname):
+#    prob_map=defaultdict(list)
+#    entropy_map={}
+#
+#    with codecs.open(giza_lex_fname,'r','utf-8') as giza_lex_file: 
+#        for line in iter(giza_lex_file):
+#            c1,c2,prob=line.strip().split(' ')
+#            prob=float(prob)
+#            prob_map[c2].append(prob)
+#
+#    for c2,prob2 in prob_map.iteritems():
+#        entropy_map[c2]=-sum([ p*math.log(p)  for p in prob2 ])
+#
+#    # compute average entropy
+#    ave_entropy=float(sum([y for x,y in entropy_map.iteritems()]))/float(len(entropy_map))
+#    print ave_entropy
             
+def compute_entropy(model_fname):
+
+    translit_model=TransliterationModel.load_translit_model(model_fname)
+
+    logz_func=np.vectorize(log_z,otypes=[np.float])
+
+    print np.average( np.sum( -1.0*translit_model.param_values*logz_func(translit_model.param_values),
+                axis=1)
+        )
 
 ### Wrapper methods 
 
@@ -879,6 +929,7 @@ if __name__=='__main__':
         'compute_stats': compute_parallel_corpus_statistics,
         'randomize_and_select':randomize_and_select,
         'count_common_msr_corpus':count_common_msr_corpus,
+        'extract_common_msr_corpus':extract_common_msr_corpus,
 
         'create_train_tun':create_train_tun,
 
