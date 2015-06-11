@@ -39,11 +39,11 @@ python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nb
 
 # generate NEWS 2015 evaluation format output file 
 python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-        $data_dir/test.id \
-        $ref_xml \
-        $workspace_dir/evaluation/test.nbest.$tgt_lang \
-        $workspace_dir/evaluation/test.nbest.$tgt_lang.xml \
-        $systemtype $dataset $src_lang $tgt_lang  
+        "$data_dir/test.id" \
+        "$ref_xml" \
+        "$workspace_dir/evaluation/test.nbest.$tgt_lang" \
+        "$workspace_dir/evaluation/test.nbest.$tgt_lang.xml" \
+        "$systemtype" "$dataset" "$src_lang" "$tgt_lang"  
 
 # run evaluation 
 python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \

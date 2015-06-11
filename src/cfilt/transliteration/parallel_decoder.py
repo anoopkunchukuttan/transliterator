@@ -67,5 +67,6 @@ def parallel_evaluate(translit_model,lm_model,word_pairs,
         print u'Input: {}'.format(''.join(f_input_word)).encode('utf-8')
         print u'{} {} {}'.format(*map(lambda x:''.join(x), [f_input_word,e_output_word,best_output]) ).encode('utf-8')
 
+## Seems main in needed for some reason for using multiprocessor in this fashion
 if __name__ == '__main__': 
     pass 
