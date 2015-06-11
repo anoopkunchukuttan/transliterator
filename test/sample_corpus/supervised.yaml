@@ -37,13 +37,16 @@ prior_config:
     ## random prior 
     random: 
      scale: 1.0
-         ### based on rule based mapping for Indic scripts 
-         #indic_mapping:
-         #     scale_factor_mapping_exists: 10.0
-         #     base_measure_mapping_exists: 1000.0    
-         #     src: pa
-         #     tgt: hi
 
+    ### based on rule based mapping for Indic scripts 
+    #indic_mapping:
+    #     scale_factor_mapping_exists: 10.0
+    #     base_measure_mapping_exists: 1000.0    
+    #     src: pa
+    #     tgt: hi
+         
+    ### add one smooting
+    #add_one_smoothing:
 
 ##  The debug log directory
 ## Optional

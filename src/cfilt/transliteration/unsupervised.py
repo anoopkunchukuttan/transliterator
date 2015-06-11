@@ -271,6 +271,9 @@ class UnsupervisedTransliteratorTrainer:
                             self._alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=self._priorparams['base_measure_mapping_exists']
                             self._alpha[e_id,:]*=self._priorparams['scale_factor_mapping_exists']
 
+            elif self._priormethod=='add_one_smoothing':
+                self._alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+
     def _initialize_parameter_structures(self): 
         """
     
