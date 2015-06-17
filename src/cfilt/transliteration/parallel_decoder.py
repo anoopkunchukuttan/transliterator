@@ -24,7 +24,7 @@ def parallel_decode(translit_model,lm_model,word_list,
 
     pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model]) 
 
-    output=pool.map(parallel_decode,word_list)
+    output=pool.map(task_decode,word_list)
     pool.close()
     pool.join()
 
