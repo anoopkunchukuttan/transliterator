@@ -112,7 +112,7 @@ class TransliterationDecoder:
             return 0.0
 
     #@profile
-    def _decode_internal(self,f_input_word): 
+    def decode(self,f_input_word): 
         """
             bigram language model 
         """
@@ -228,13 +228,10 @@ class TransliterationDecoder:
 
         return list(reversed(decoded_output))
  
-    def decode(self,f_input_str):
-        return ''.join( self._decode_internal( map(lambda x:x,f_input_str)  ) )
-
     def evaluate(self,word_pairs):
         for f_input_word, e_output_word in word_pairs: 
             print u'Input: {}'.format(''.join(f_input_word)).encode('utf-8')
-            best_output=''.join(self._decode_internal(f_input_word))
+            best_output=''.join(self.decode(f_input_word))
 
             print u'{} {} {}'.format(*map(lambda x:''.join(x), [f_input_word,e_output_word,best_output]) ).encode('utf-8')
 
@@ -256,7 +253,7 @@ class TransliterationDecoder:
 
         return list(reversed(decoded_output))
 
-    def _decode_top_n_internal(self,f_input_word,topn=1): 
+    def decode_topn(self,f_input_word,topn=1): 
         """
             bigram language model 
         """
@@ -352,5 +349,3 @@ class TransliterationDecoder:
 
         return nbest_list
 
-    def decode_top_n(self,f_input_str,topn=1):
-        return [ (''.join(c),s)   for c,s in self._decode_topn_internal( map(lambda x:x,f_input_str), topn  )  ]

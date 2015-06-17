@@ -432,7 +432,7 @@ class UnsupervisedTransliteratorTrainer:
         #####  previous parameter values  #####
         self.prev_param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
 
-    #def _prepare_corpus_unsupervised(self,word_triplets): 
+    #def _prepare_corpus_unsupervised(self,word_triplets, append=True): 
     #    """
     #      symbol mappings have already been created using '_initialize_unsupervised_training' 
 
@@ -499,37 +499,6 @@ class UnsupervisedTransliteratorTrainer:
                 for charseq_pair in align: 
                     self.param_occurence_info[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
 
-    #def _prepare_corpus_unsupervised1(self,translation_outputs): 
-    #    """
-    #      symbol mappings have already been created using '_initialize_unsupervised_training' 
-
-    #      every character sequence in the corpus can be uniquely addressed as: 
-    #      corpus[0][word_pair_idx][align_idx][aln_point_idx]
-    #
-    #      every weight can be indexed as: 
-    #      corpus[1][word_pair_idx][align_idx]
-    #
-    #    """
-    #    self.wpairs_aligns=[]
-    #    self.wpairs_weights=[]
-   
-    #    for f, einfo_list in translation_outputs: 
-    #        for e, e_score in einfo_list: 
-    #            alignments=self._generate_alignments(f,e)
-    #            if len(alignments)>0:
-    #                self.wpairs_aligns.append(alignments)
-    #                self.wpairs_weights.append( [e_score/float( len(alignments) )] *  len(alignments)  )
-    #            else: 
-    #                print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
-
-    #    self.param_occurence_info=defaultdict(lambda :defaultdict(list))
-   
-    #    # gather transliteration occurrence info
-    #    for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-    #        for aln_idx,align in enumerate(alignments): 
-    #            for charseq_pair in align: 
-    #                self.param_occurence_info[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
-    
     def em_unsupervised_train(self,f_input_words,e_char_set): 
         """
         """
@@ -546,14 +515,11 @@ class UnsupervisedTransliteratorTrainer:
             ##### M-step #####
 
             ## decode: approximate marginalization over all e strings by maximization
-            #print "Decoding for EM"
-            #decoder=TransliterationDecoder(self._translit_model,self._lm_model)
-            #word_pairs=list(it.izip( f_input_words, it.imap( decoder._decode_internal,f_input_words)  ))
 
             ### >>> Simple 1-best candidate based training (1)
             print "Parallel Decoding for EM"
             prev_outputs=output_words if output_words is not None else ['']*len(f_input_words)
-            output_words=parallel_decode_char_string(self._translit_model, self._lm_model, f_input_words)
+            output_words=parallel_decode(self._translit_model, self._lm_model, f_input_words)
             word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
             # initialize the EM training
@@ -564,11 +530,11 @@ class UnsupervisedTransliteratorTrainer:
             #### >>> top-k candidate based training (without updating alignment probabilities ie not using e-step)
             #print "Parallel Decoding for EM"
             ## translation outputs: list of tuples (source word, list of tuples(target, probability)  )
-            #translation_outputs=list(it.izip( f_input_words , parallel_decode_nbest_char_string(self._translit_model, self._lm_model, f_input_words) ) )
+            #translation_outputs=list(it.izip( f_input_words , parallel_decode_nbest(self._translit_model, self._lm_model, f_input_words, topn) ) )
 
             ## initialize the EM training
             #print "Preparing corpus"
-            #self._prepare_corpus_unsupervised_1(translation_outputs)
+            #self._prepare_corpus_unsupervised_topn(translation_outputs)
             #### >>>
 
             # estimate alignment parameters
@@ -588,113 +554,3 @@ class UnsupervisedTransliteratorTrainer:
             print "Computing alignment weights" 
             self._e_step()
 
-if __name__=='__main__': 
-    ##### Parallel Decoding
-    #data_dir='/home/development/anoop/experiments/unsupervised_transliterator/data'
-    ##parallel_dir=data_dir+'/'+'en-hi'
-
-    ##fcorpus_fname=parallel_dir+'/'+'train.en'
-    ##ecorpus_fname=parallel_dir+'/'+'train.hi'
-    #lm_fname=data_dir+'/'+'hi-2g.lm'
-    ###test_fcorpus_fname=parallel_dir+'/'+'test.en'
-    ###test_ecorpus_fname=parallel_dir+'/'+'test.hi'
-    ##test_fcorpus_fname='test.en'
-    ##test_ecorpus_fname='test.hi'
-    ##with timer.Timer(True) as t: 
-    ##    parallel_evaluate(TransliterationModel.load_translit_model('translit.model'),
-    ##                        load_lm_model(lm_fname),
-    ##                        read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname)
-    ##                     )
-
-    #print parallel_decode_char_string(TransliterationModel.load_translit_model('translit.model'), load_lm_model(lm_fname), read_monolingual_string_corpus('test.en')) 
-    ##print 'Time for decoding: '.format(t.secs)
-
-    #
-    #######  model information
-    ####  F: source  E: target
-
-    #### file listing set of characters in the source
-    ##fcfname='kannada/En-Ka-News_EnglishLabels_KannadaRows_EnglishColumns_linear_'
-    #### file listing set of characters in the target
-    ##ecfname='kannada/En-Ka-News_KannadaLabels_KannadaRows_EnglishColumns_linear_'
-    #### file listing alignment from source to target
-    ####  target is along the rows, source is along the columns
-    ##alignmentfname='kannada/En-Ka-News_CrossEntropy_AlignmentMatrix_KannadaRows_EnglishColumns_linear_'
-    ##### bigram- target language model in APRA  model. Note: decoding currently supports only bigram models
-    ##lm_fname='kannada/Ka-2g.lm'
-    ##
-    ####### testset information 
-    ##test_fcorpus_fname='kannada/test.En'
-    ##test_ecorpus_fname='kannada/test.Ka'
-
-    ##tm_model=TransliterationModel.construct_transliteration_model(fcfname,ecfname,alignmentfname)
-    ##lm_model=load_lm_model(lm_fname)
-
-    ##decoder=TransliterationDecoder(tm_model,lm_model)
-    ##decoder.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
-
-    ###fcorpus_fname=sys.argv[1]
-    ###ecorpus_fname=sys.argv[2]
-    ###model_dir=sys.argv[3]
-    ###lm_fname=sys.argv[4]
-    ###test_fcorpus_fname=sys.argv[5]
-    ###test_ecorpus_fname=sys.argv[6]
-
-    #############  Supervised training
-    #data_dir='/home/development/anoop/experiments/unsupervised_transliterator/data'
-    #parallel_dir=data_dir+'/'+'en-hi'
-
-    #fcorpus_fname=parallel_dir+'/'+'train.en'
-    #ecorpus_fname=parallel_dir+'/'+'train.hi'
-    #lm_fname=data_dir+'/'+'hi-2g.lm'
-    ###test_fcorpus_fname=parallel_dir+'/'+'test.en'
-    ###test_ecorpus_fname=parallel_dir+'/'+'test.hi'
-    ##test_fcorpus_fname='test.en'
-    ##test_ecorpus_fname='test.hi'
-
-    #lm_model=load_lm_model(lm_fname)
-
-    #em=UnsupervisedTransliteratorTrainer(lm_model)
-    #em.em_supervised_train(read_parallel_string_corpus(fcorpus_fname,ecorpus_fname))
-    ###TransliterationModel.save_translit_model(em._translit_model,'translit.model')
-
-    #
-    #decoder=TransliterationDecoder(em._translit_model,em._lm_model)
-    ##decoder=TransliterationDecoder(TransliterationModel.load_translit_model('translit.model'),load_lm_model(lm_fname))
-    #with timer.Timer(True) as t: 
-    #    decoder.evaluate(read_parallel_string_corpus(test_fcorpus_fname,test_ecorpus_fname))
-    #print 'Time for decoding: '.format(t.secs)
-       
-
-    #########  Unsupervised training
-    #data_dir='/home/development/anoop/experiments/unsupervised_transliterator/data'
-    ##parallel_dir=data_dir+'/'+'en-hi'
-
-    ##fcorpus_fname=parallel_dir+'/'+'train.en'
-    ##ecorpus_fname=parallel_dir+'/'+'train.hi'
-    ##test_fcorpus_fname=parallel_dir+'/'+'test.en'
-    ##test_ecorpus_fname=parallel_dir+'/'+'test.hi'
-
-    #fcorpus_fname='10.en'
-    #ecorpus_fname='10.hi'
-    #test_fcorpus_fname='10.en'
-    #test_ecorpus_fname='10.hi'
-
-    #lm_fname=data_dir+'/'+'hi-2g.lm'
-
-    #lm_model=load_lm_model(lm_fname)
-
-    #em=UnsupervisedTransliteratorTrainer(lm_model)
-    #em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname))
-    ##TransliterationModel.save_translit_model(em._translit_model, 'noprior.model'): 
-
-    ##decoder=TransliterationDecoder(em._translit_model,em._lm_model)
-    ##decoder.evaluate(read_parallel_corpus(test_fcorpus_fname,test_ecorpus_fname))
-
-    #with timer.Timer(True) as t: 
-    #    parallel_evaluate(em._translit_model,em._lm_model,
-    #                        read_parallel_string_corpus(test_fcorpus_fname,test_ecorpus_fname)
-    #                     )
-    #print 'Time for decoding: '.format(t.secs)
-
-    pass 

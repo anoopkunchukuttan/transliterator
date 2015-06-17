@@ -29,32 +29,23 @@ def read_yaml_file(fname):
 
 ### Corpus reading utilities 
 
-def read_parallel_string_corpus(fcorpus_fname,ecorpus_fname): 
+def read_parallel_corpus(fcorpus_fname,ecorpus_fname): 
     with codecs.open(fcorpus_fname,'r','utf-8') as ffile:
         with codecs.open(ecorpus_fname,'r','utf-8') as efile:
             return [ ( f.strip().split() , e.strip().split()  )  for f,e in it.izip( iter(ffile)  , iter(efile)  ) ] 
 
-def read_monolingual_string_corpus(corpus_fname): 
-    with codecs.open(corpus_fname,'r','utf-8') as infile:
-            return [ w.strip().split()  for w in infile ] 
-
-def write_monolingual_string_corpus(corpus_fname,output_list): 
-    with codecs.open(corpus_fname,'w','utf-8') as outfile:
-        for output in output_list: 
-            outfile.write(u' '.join(output) + '\n')
-
 def read_monolingual_corpus(corpus_fname): 
     with codecs.open(corpus_fname,'r','utf-8') as infile:
-            return [ w.strip() for w in infile ] 
+            return [ w.strip().split()  for w in infile ] 
 
 def write_monolingual_corpus(corpus_fname,output_list): 
     with codecs.open(corpus_fname,'w','utf-8') as outfile:
         for output in output_list: 
-            outfile.write(output + '\n')
+            outfile.write(u' '.join(output) + '\n')
 
 def generate_char_set(fname):
     char_set=set()
-    for input_word in read_monolingual_string_corpus(fname): 
+    for input_word in read_monolingual_corpus(fname): 
         char_set.update(input_word)
     return list(char_set)
 
