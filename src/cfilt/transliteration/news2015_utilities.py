@@ -742,6 +742,9 @@ def convert_to_nbest_format(infname,outfname):
                     u'Distortion0= 0 LM0= -25.8624 WordPenalty0= -6 PhrasePenalty0= 3 TranslationModel0= -1.12625 -4.78717 -0.83186 -6.77739', u'-5.38081' ) )
 
 def correct_vowels(nbest_fname,lang): 
+    """
+    Correcting initial vowel mark
+    """
     # readfile
     dataset=list(iterate_nbest_list(nbest_fname))
 

@@ -32,12 +32,34 @@ def transliterate(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, 
 
     write_monolingual_corpus(ecorpus_fname,output)
 
+def transliterate_topn(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, topn,  n_processes=None):
+
+    if n_processes is not None: 
+        n_processes=int(n_processes)
+
+    topn=int(topn)
+
+    output=parallel_decode_topn(TransliterationModel.load_translit_model(translit_model_fname), 
+                                load_lm_model(lm_fname),
+                                read_monolingual_corpus(fcorpus_fname),
+                                topn,
+                                n_processes
+                              )
+
+    with codecs.open(ecorpus_fname,'w','utf-8') as ofile: 
+        for i, ocand_list in enumerate(output): 
+            for candidate, score in ocand_list: 
+                ofile.write( u'{} ||| {} ||| {} ||| {}\n'.format( i, u' '.join(candidate), u' ', score  ) )
+
+
+
 if __name__=='__main__': 
 
     commands={
                 'unsup_train':unsupervised_training,
                 'sup_train':supervised_training,
                 'transliterate':transliterate,
+                'transliterate_topn':transliterate_topn,
             }
 
     commands[sys.argv[1]](*sys.argv[2:])

@@ -1,6 +1,6 @@
 from multiprocessing import Pool
 import multiprocessing
-import random
+import random, functools
 import itertools as it
 
 from cfilt.transliteration.decoder import *
@@ -51,7 +51,6 @@ def task_decode_topn(char_list,topn):
 # Convenience functions for parallel decoding
 def parallel_decode_topn(translit_model,lm_model,word_list, topn,
                      n_processes=None,
-                     decoder_func=task_decode
                      ): 
 
     pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model]) 
