@@ -24,8 +24,8 @@ time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py unsup_trai
     $fcorpus_fname $ecorpus_fname $config_fname $lm_fname $workspace_dir/model/translit.model > $workspace_dir/log/train.log 2>&1 
 
 # test
-time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py transliterate \
-    $workspace_dir/model/translit.model $lm_fname $test_fcorpus_fname $workspace_dir/evaluation/test.$tgt_lang > $workspace_dir/log/decode.log 2>&1 
+time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py transliterate_topn \
+    $workspace_dir/model/translit.model $lm_fname $test_fcorpus_fname $workspace_dir/evaluation/test.nbest.$tgt_lang 10 > $workspace_dir/log/decode.log 2>&1 
 
 ## rule based 
 #python /home/development/anoop/installs/indic_nlp_library/src/indicnlp/transliterate/unicode_transliterate.py \
@@ -33,9 +33,9 @@ time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py transliter
 #        $workspace_dir/evaluation/test.$tgt_lang \
 #        $src_lang $tgt_lang 
 
-# convert to nbest format 
-python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
-    $workspace_dir/evaluation/test.$tgt_lang $workspace_dir/evaluation/test.nbest.$tgt_lang
+## convert to nbest format 
+#python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
+#    $workspace_dir/evaluation/test.$tgt_lang $workspace_dir/evaluation/test.nbest.$tgt_lang
 
 # generate NEWS 2015 evaluation format output file 
 python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
@@ -51,3 +51,4 @@ python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
         -i $workspace_dir/evaluation/test.nbest.$tgt_lang.xml \
         -o $workspace_dir/evaluation/test.nbest.$tgt_lang.detaileval.csv \
         > $workspace_dir/evaluation/test.nbest.$tgt_lang.eval 
+
