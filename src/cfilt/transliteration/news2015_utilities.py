@@ -741,6 +741,11 @@ def convert_to_nbest_format(infname,outfname):
                 outfile.write( u'{} ||| {} ||| {} ||| {}\n'.format( n, line.strip(), 
                     u'Distortion0= 0 LM0= -25.8624 WordPenalty0= -6 PhrasePenalty0= 3 TranslationModel0= -1.12625 -4.78717 -0.83186 -6.77739', u'-5.38081' ) )
 
+def convert_to_1best_format(infname,outfname):
+    with codecs.open(outfname,'w','utf-8') as outfile:
+        for sent_no, parsed_lines in iterate_nbest_list(infname): 
+            outfile.write(parsed_lines[0][1].strip()+u'\n')
+
 def correct_vowels(nbest_fname,lang): 
     """
     Correcting initial vowel mark
@@ -941,6 +946,7 @@ if __name__=='__main__':
 
         'postprocess_nbest_list':postprocess_nbest_list,
         'convert_to_nbest_format':convert_to_nbest_format,
+        'convert_to_1best_format':convert_to_1best_format,
 
         'correct_vowels':correct_vowels,
 

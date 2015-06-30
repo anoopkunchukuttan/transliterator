@@ -71,21 +71,21 @@ def max_rel_diff_char(cmap1,cmap2,k):
 
     return sorted(diff_list,key=operator.itemgetter(1),reverse=True)[:k]
 
-def kl_divergence(cmap_p,cmap_q): 
-    pk=[]
-    qk=[]
-    for coffset in xrange(langinfo.COORDINATED_RANGE_START_INCLUSIVE,langinfo.COORDINATED_RANGE_END_INCLUSIVE+1):
-        pk.append(cmap_p[coffset])
-        qk.append(cmap_q[coffset])
-    return scipy.stats.entropy(pk,qk)
+#def kl_divergence(cmap_p,cmap_q): 
+#    pk=[]
+#    qk=[]
+#    for coffset in xrange(langinfo.COORDINATED_RANGE_START_INCLUSIVE,langinfo.COORDINATED_RANGE_END_INCLUSIVE+1):
+#        pk.append(cmap_p[coffset])
+#        qk.append(cmap_q[coffset])
+#    return scipy.stats.entropy(pk,qk)
 
 #def extract_lang_stats(infname,ofname,lang): 
 #    charlist=[]
 #    with codecs.open(infname,ofname,lang): 
 
-if __name__=='__main__': 
-
-    commands={
-            count_chars: 
-            }
-            
+#if __name__=='__main__': 
+#
+#    commands={
+#            count_chars: 
+#            }
+#            
