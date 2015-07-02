@@ -382,9 +382,13 @@ class UnsupervisedTransliteratorTrainer:
             # write intemediate transliterations 
             if word_triplets is not None:
                 with codecs.open('{}/{}/transliterations.txt'.format(self._config['log_dir'],iter_no) , 'w',  'utf-8' ) as ofile:
-                    for src_w, tgt_w, prev_tgt_w in word_triplets:
-                        ofile.write(''.join(tgt_w)+'\n')
 
+                    for src_w, tgt_w, prev_tgt_w in word_triplets:
+                        ofile.write(' '.join(tgt_w)+'\n')
+
+                    #for f,e_cands in word_triplets: 
+                    #    for e, score in e_cands: 
+                    #        ofile.write(' '.join(e)+'\n')
 
     def em_supervised_train(self,word_pairs): 
         """
@@ -620,6 +624,6 @@ class UnsupervisedTransliteratorTrainer:
                 break
     
             ######  E-step ####
-            print "Computing alignment weights" 
-            self._e_step()
+            #print "Computing alignment weights" 
+            #self._e_step()
 
