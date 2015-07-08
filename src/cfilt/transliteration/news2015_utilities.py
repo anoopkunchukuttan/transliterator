@@ -1,6 +1,6 @@
 import os, sys, re, itertools, codecs 
 import xml.etree.ElementTree as ET
-#from indicnlp.normalize.indic_normalize import IndicNormalizerFactory
+from indicnlp.normalize.indic_normalize import IndicNormalizerFactory
 import numpy as np, math, scipy
 import random
 import shutil
@@ -8,12 +8,21 @@ from collections import defaultdict
 
 from cfilt.transliteration.decoder import *
 from cfilt.transliteration.utilities import *
+from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTransliterator
 
 #infname=sys.argv[1]
 #outdir=sys.argv[2]
 #prefix=sys.argv[3]
 #src_lang=sys.argv[4]
 #tgt_lang=sys.argv[5]
+
+# NEWS code to ISO code for Indian language    
+lang_code_mapping={
+                    'Ba':'bn',
+                    'Ka':'kn',
+                    'Hi':'hi',
+                    'Ta':'ta',
+                  }
 
 ### Methods for parsing n-best lists
 def parse_line(line):
@@ -113,13 +122,6 @@ def parse_news_2015(infname,
         tgt_lang 
     """
 
-    # NEWS code to ISO code for Indian language    
-    lang_code_mapping={
-                        'Ba':'bn',
-                        'Ka':'kn',
-                        'Hi':'hi',
-                        'Ta':'ta',
-                      }
 
     if not os.path.exists(outdir):        
         os.mkdir(outdir)
@@ -216,14 +218,6 @@ def parse_news_2015_official(infname,
 
     # hack ends
     
-    # NEWS code to ISO code for Indian language    
-    lang_code_mapping={
-                        'Ba':'bn',
-                        'Ka':'kn',
-                        'Hi':'hi',
-                        'Ta':'ta',
-                      }
-
     if not os.path.exists(outdir):        
         os.mkdir(outdir)
 
@@ -407,6 +401,9 @@ def generate_news_2015_output(id_fname,src_fname,tgt_fname,out_fname,systemtype,
         outfile.write('\n</TransliterationTaskResults>\n')
 
 def generate_news_2015_gold_standard(src_fname,tgt_fname,out_fname,corpus,corpus_size,srclang,tgtlang):
+    """
+    Generate Gold standard file from source and target file, which are in one word per line format adn space-separated
+    """
 
     outfile_header=u"""<?xml version="1.0" encoding="UTF-8"?>
     
@@ -447,6 +444,57 @@ def generate_news_2015_gold_standard(src_fname,tgt_fname,out_fname,corpus,corpus
 
     srcfile.close()
     tgtfile.close()
+
+def generate_news_2015_gold_standard2(in_fname,out_fname,corpus,corpus_size,srclang,tgtlang):
+    """
+    Generate Gold standard file from a single file
+    Format of a line: 
+        src_word | tgt_word1 ^ tgt_word2 ^ .....
+
+    The words are not character split     
+
+    """
+
+    outfile_header=u"""<?xml version="1.0" encoding="UTF-8"?>
+    
+    <TransliterationCorpus 
+        CorpusFormat="UTF-8" 
+        CorpusID="{}" 
+        CorpusSize="{}" 
+        CorpusType="Dev" 
+        NameSource="Mixed" 
+    	SourceLang = "{}"
+    	TargetLang = "{}">\n
+""".format(corpus,corpus_size,srclang,tgtlang)
+
+
+#<TransliterationCorpus CorpusFormat="UTF-8" CorpusID="NEWS2012-EnHi" CorpusSize="997" CorpusType="Dev" NameSource="Mixed" SourceLang="En" TargetLang="Hi">
+
+    # (src_id,src_str,( (tgt_id,tgt_str), ....  ) )
+
+    def parse_infile(fname): 
+        with codecs.open(fname,'r','utf-8') as infile: 
+            for line in infile: 
+                src_w, tgt_str=line.strip().split('|')
+                tgt_words=[x.strip() for x in tgt_str.split('^')]
+                yield (src_w,tgt_words)
+
+    with codecs.open(out_fname,'w','utf-8') as outfile:  
+
+        outfile.write(outfile_header)
+
+        for src_id, (src_str,tgt_strs) in enumerate(parse_infile(in_fname),1):
+
+            outfile.write(u'<Name ID="{}">\n'.format(src_id))
+            outfile.write(u'<SourceName>{}</SourceName>\n'.format(src_str))
+
+            for tn, tgt_str in enumerate(tgt_strs,1):
+    	        outfile.write(u'<TargetName ID="{}">{}</TargetName>\n'.format(tn,tgt_str))
+                
+            outfile.write(u'</Name>\n\n')
+
+        outfile.write('\n</TransliterationCorpus>\n')
+
 
 #### ngram related methods 
 
@@ -582,7 +630,49 @@ def filter_brahminet_length_ratio(datadir,src,tgt,lratio,std):
     traintgtfile.close()
 
 
+#def extract_common_msr_corpus(c0_dir, c1_dir, c0_lang, c1_lang, outdir ): 
+#
+#    data_cache=defaultdict(lambda : [set(),set()])
+#
+#    # read corpus 0
+#    en0_f=codecs.open(c0_dir+'/train.En','r','utf-8')
+#    l0_f=codecs.open(c0_dir+'/train.'+c0_lang,'r','utf-8')
+#
+#    for en_l,c_l in itertools.izip(iter(en0_f),iter(l0_f)): 
+#        data_cache[en_l.strip()][0].add(c_l.strip())
+#
+#    en0_f.close()
+#    l0_f.close()
+#
+#    # read corpus 1                
+#    en1_f=codecs.open(c1_dir+'/train.En','r','utf-8')
+#    l1_f=codecs.open(c1_dir+'/train.'+c1_lang,'r','utf-8')
+#
+#    for en_l,c_l in itertools.izip(iter(en1_f),iter(l1_f)): 
+#        data_cache[en_l.strip()][1].add(c_l.strip())
+#
+#    en1_f.close()
+#    l1_f.close()
+#
+#    # write the common data
+#    cc0_f=codecs.open(outdir+'/train.'+c0_lang,'w','utf-8')
+#    cc1_f=codecs.open(outdir+'/train.'+c1_lang,'w','utf-8')
+#
+#    for en_l, other_l_lists in data_cache.iteritems(): 
+#        if len(other_l_lists[0]) >0 and len(other_l_lists[1]) >0 : 
+#            #print 'inside: {}'.format(len(other_l_lists[0])*len(other_l_lists[1]))
+#            for c0_str, c1_str in itertools.product( other_l_lists[0] , other_l_lists[1] ):  
+#                cc0_f.write(u''.join(c0_str.split()) +u'\n') 
+#                cc1_f.write(u''.join(c1_str.split()) +u'\n') 
+#
+#    cc0_f.close()
+#    cc1_f.close()
+
 def extract_common_msr_corpus(c0_dir, c1_dir, c0_lang, c1_lang, outdir ): 
+
+    factory=IndicNormalizerFactory()
+    l0_normalizer=factory.get_normalizer(lang_code_mapping[c0_lang])
+    l1_normalizer=factory.get_normalizer(lang_code_mapping[c1_lang])
 
     data_cache=defaultdict(lambda : [set(),set()])
 
@@ -591,7 +681,7 @@ def extract_common_msr_corpus(c0_dir, c1_dir, c0_lang, c1_lang, outdir ):
     l0_f=codecs.open(c0_dir+'/train.'+c0_lang,'r','utf-8')
 
     for en_l,c_l in itertools.izip(iter(en0_f),iter(l0_f)): 
-        data_cache[en_l.strip()][0].add(c_l.strip())
+        data_cache[en_l.strip()][0].add(l0_normalizer.normalize(c_l.strip()))
 
     en0_f.close()
     l0_f.close()
@@ -601,24 +691,62 @@ def extract_common_msr_corpus(c0_dir, c1_dir, c0_lang, c1_lang, outdir ):
     l1_f=codecs.open(c1_dir+'/train.'+c1_lang,'r','utf-8')
 
     for en_l,c_l in itertools.izip(iter(en1_f),iter(l1_f)): 
-        data_cache[en_l.strip()][1].add(c_l.strip())
+        data_cache[en_l.strip()][1].add(l1_normalizer.normalize(c_l.strip()))
 
     en1_f.close()
     l1_f.close()
 
     # write the common data
-    cc0_f=codecs.open(outdir+'/train.'+c0_lang,'w','utf-8')
-    cc1_f=codecs.open(outdir+'/train.'+c1_lang,'w','utf-8')
 
+    # from language c0 to c1
+    cc0_1_f=codecs.open(outdir+'/train.{}-{}'.format(c0_lang,c1_lang),'w','utf-8')
+    cc0_1_xlit_f=codecs.open(outdir+'/train.{}-{}.xlit'.format(c0_lang,c1_lang),'w','utf-8')
+    cc0_1_list=[]
+    cc0_1_xlit_list=[]
     for en_l, other_l_lists in data_cache.iteritems(): 
         if len(other_l_lists[0]) >0 and len(other_l_lists[1]) >0 : 
-            #print 'inside: {}'.format(len(other_l_lists[0])*len(other_l_lists[1]))
-            for c0_str, c1_str in itertools.product( other_l_lists[0] , other_l_lists[1] ):  
-                cc0_f.write(c0_str +u'\n') 
-                cc1_f.write(c1_str +u'\n') 
+            for c0_str in  other_l_lists[0] :  
+                c0_str_w=c0_str.replace(u' ',u'')
+                other_l_lists_w=[u''.join(x.split()) for x in other_l_lists[1]]
+                if len(c0_str_w)>3:
+                    cc0_1_list.append(c0_str_w + u'|' + u'^'.join(other_l_lists_w)+u'\n')
+                    cc0_1_xlit_list.append(UnicodeIndicTransliterator.transliterate(c0_str_w,lang_code_mapping[c0_lang],'hi') + 
+                            u'|' + 
+                            u'^'.join([ UnicodeIndicTransliterator.transliterate(x,lang_code_mapping[c1_lang],'hi')  for x in other_l_lists_w])+u'\n')
 
-    cc0_f.close()
-    cc1_f.close()
+    combined_list=zip(cc0_1_list,cc0_1_xlit_list)                   
+    random.shuffle(combined_list)
+    for wr,wr_xlit in combined_list: 
+        cc0_1_f.write(wr)
+        cc0_1_xlit_f.write(wr_xlit)
+
+    cc0_1_f.close()
+    cc0_1_xlit_f.close()
+
+    # from language c1 to c0
+    cc1_0_f=codecs.open(outdir+'/train.{}-{}'.format(c1_lang,c0_lang),'w','utf-8')
+    cc1_0_xlit_f=codecs.open(outdir+'/train.{}-{}.xlit'.format(c1_lang,c0_lang),'w','utf-8')
+    cc1_0_list=[]
+    cc1_0_xlit_list=[]
+    for en_l, other_l_lists in data_cache.iteritems(): 
+        if len(other_l_lists[1]) >0 and len(other_l_lists[0]) >0 : 
+            for c1_str in  other_l_lists[1] :  
+                c1_str_w=c1_str.replace(u' ',u'')
+                other_l_lists_w=[u''.join(x.split()) for x in other_l_lists[0]]
+                if len(c1_str_w)>3:
+                    cc1_0_list.append(c1_str_w + u'|' + u'^'.join(other_l_lists_w)+u'\n')
+                    cc1_0_xlit_list.append(UnicodeIndicTransliterator.transliterate(c1_str_w,lang_code_mapping[c1_lang],'hi') + 
+                            u'|' + 
+                            u'^'.join([ UnicodeIndicTransliterator.transliterate(x,lang_code_mapping[c0_lang],'hi')  for x in other_l_lists_w])+u'\n')
+
+    combined_list=zip(cc1_0_list,cc1_0_xlit_list)                   
+    random.shuffle(combined_list)
+    for wr,wr_xlit in combined_list: 
+        cc1_0_f.write(wr)
+        cc1_0_xlit_f.write(wr_xlit)
+
+    cc1_0_f.close()
+    cc1_0_xlit_f.close()
 
 def count_common_msr_corpus(en1_fname,en2_fname): 
 
@@ -928,6 +1056,7 @@ if __name__=='__main__':
         'parse':parse_news_2015,        
         'gen_news_output':generate_news_2015_output,
         'generate_news_2015_gold_standard':generate_news_2015_gold_standard,
+        'generate_news_2015_gold_standard2':generate_news_2015_gold_standard2,
 
         'create_ngram_corpus': create_ngram_corpus,
         'postedit_ngram_output':postedit_ngram_output,
