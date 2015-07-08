@@ -12,10 +12,10 @@ import srilm
 from cfilt.transliteration.decoder import *
 from cfilt.transliteration.parallel_decoder import *
 from cfilt.transliteration.utilities import *
+from cfilt.transliteration.char_mappings import *
 
 from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTransliterator 
 from indicnlp import langinfo 
-
 
 # Alignment is a list of 'charseq_pairs'
 # represented as 'src_seq|tgtseq'
@@ -219,7 +219,29 @@ class UnsupervisedTransliteratorTrainer:
         # for e
         for s,i in self._translit_model.e_sym_id_map.iteritems():
             self._translit_model.e_id_sym_map[i]=s
-   
+  
+    def _generate_en_indic_hyperparams(self,params):
+
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+
+        ## get mapping rules 
+        mapping_rules=filter_by_val_len(remove_constraints(en_il_rules))
+        if 'upper_case' in params:
+            mapping_rules=conv_upper(mapping_rules)
+
+        src=params['src']
+        tgt=params['tgt']
+
+        for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
+            offset=ord(e_sym)-langinfo.SCRIPT_RANGES[tgt][0]
+            if offset in mapping_rules: 
+                for f_sym_x in mapping_rules[offset]:
+                    if f_sym_x in self._translit_model.f_sym_id_map: 
+                        alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=params['base_measure_mapping_exists']
+                        alpha[e_id,:]*=params['scale_factor_mapping_exists']
+
+        return alpha
+
     def _init_param_values(self):
 
         if  not hasattr(self,'_initmethod') or self._initmethod=='random':
@@ -235,22 +257,6 @@ class UnsupervisedTransliteratorTrainer:
         elif  self._initmethod=='uniform':
             self._translit_model.param_values=np.ones([len(self._translit_model.e_sym_id_map),
                                 len(self._translit_model.f_sym_id_map)]) * 1.0/len(self._translit_model.f_sym_id_map)
-
-        #elif  self._initmethod=='indic_mapping':
-
-        #    alpha=np.random.rand(len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map))
-        #    src=self._initparams['src']
-        #    tgt=self._initparams['tgt']
-
-        #    for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
-        #        offset=ord(e_sym)-langinfo.SCRIPT_RANGES[tgt][0]
-        #        if offset >=langinfo.COORDINATED_RANGE_START_INCLUSIVE and offset <= langinfo.COORDINATED_RANGE_END_INCLUSIVE:
-        #            f_sym_x=UnicodeIndicTransliterator.transliterate(e_sym,tgt,src)
-        #            if f_sym_x in self._translit_model.f_sym_id_map: 
-        #                alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=self._initparams['base_measure_mapping_exists']
-        #                alpha[e_id,:]*=self._initparams['scale_factor_mapping_exists']
-
-        #    self._translit_model.param_values=np.apply_along_axis(np.random.dirichlet, 1, alpha)
 
         elif  self._initmethod=='indic_mapping':
 
@@ -268,6 +274,15 @@ class UnsupervisedTransliteratorTrainer:
 
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
+
+        elif  self._initmethod=='en_il_mapping':
+            alpha=self._generate_en_indic_hyperparams(self._initparams)
+            alpha_sums=np.sum(alpha, axis=1)
+            self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
+
+            df=pd.DataFrame(self._translit_model.param_values)
+            df.to_csv('paramvalues.csv')
+
 
     def _init_dirichlet_priors(self): 
 
@@ -291,6 +306,11 @@ class UnsupervisedTransliteratorTrainer:
                         if f_sym_x in self._translit_model.f_sym_id_map: 
                             self._alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=self._priorparams['base_measure_mapping_exists']
                             self._alpha[e_id,:]*=self._priorparams['scale_factor_mapping_exists']
+
+            elif  self._initmethod=='en_il_mapping':
+                self._alpha=self._generate_en_indic_hyperparams(self._initparams)
+                df=pd.DataFrame(self._alpha)
+                df.to_csv('alpha.csv')
 
             elif self._priormethod=='add_one_smoothing':
                 self._alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))

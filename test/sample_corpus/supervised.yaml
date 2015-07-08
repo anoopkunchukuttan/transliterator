@@ -15,17 +15,25 @@ allowed_mappings:
 # defaults to random
 # if 'dirichlet' is specified, then 'prior_config' key must be present and the appropriate method defined
 initialization: 
-    ## random prior 
-    random: 
-     scale: 1.0
-         ### uniform 
-         #uniform: 
-         ### based on rule based mapping for Indic scripts 
-         #indic_mapping:
-         #     scale_factor_mapping_exists: 10.0
-         #     base_measure_mapping_exists: 1000.0    
-         #     src: pa
-         #     tgt: hi
+    ### random prior 
+    #random: 
+    # scale: 1.0
+    ### uniform 
+    #uniform: 
+    ### based on rule based mapping for Indic scripts 
+    #indic_mapping:
+    #     scale_factor_mapping_exists: 10.0
+    #     base_measure_mapping_exists: 1000.0    
+    #     src: pa
+    #     tgt: hi
+    
+    ## based on rule based mapping for English to Indic scripts 
+    en_il_mapping:
+         scale_factor_mapping_exists: 10.0
+         base_measure_mapping_exists: 1000.0    
+         upper_case:     
+         src: en
+         tgt: hi
     
 
 ## Dirichlet prior for transliteration probabilities     
@@ -34,9 +42,9 @@ initialization:
 # If 'prior_config' is specified, then the method and specs must be listed
 
 prior_config: 
-    ## random prior 
-    random: 
-     scale: 1.0
+    ### random prior 
+    #random: 
+    # scale: 1.0
 
     ### based on rule based mapping for Indic scripts 
     #indic_mapping:
@@ -44,6 +52,13 @@ prior_config:
     #     base_measure_mapping_exists: 1000.0    
     #     src: pa
     #     tgt: hi
+    
+    ## based on rule based mapping for English to Indic scripts 
+    en_il_mapping:
+         scale_factor_mapping_exists: 10.0
+         base_measure_mapping_exists: 1000.0    
+         src: en
+         tgt: hi
          
     ### add one smooting
     #add_one_smoothing:
