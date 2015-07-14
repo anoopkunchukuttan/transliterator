@@ -283,6 +283,11 @@ class UnsupervisedTransliteratorTrainer:
             df=pd.DataFrame(self._translit_model.param_values)
             df.to_csv('paramvalues.csv')
 
+    #def _make_sparse_prior(self):
+    #    if hasattr(self,'_priormethod') and 'sparse_prior' in self._priorparams:
+    #        max_vals=np.apply_along_axis(np.max,1,self._alpha)
+    #        t=self._alpha.T/max_vals-1
+    #        self._alpha=t.T
 
     def _init_dirichlet_priors(self): 
 
@@ -309,8 +314,6 @@ class UnsupervisedTransliteratorTrainer:
 
             elif  self._initmethod=='en_il_mapping':
                 self._alpha=self._generate_en_indic_hyperparams(self._initparams)
-                df=pd.DataFrame(self._alpha)
-                df.to_csv('alpha.csv')
 
             elif self._priormethod=='add_one_smoothing':
                 self._alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
@@ -328,6 +331,7 @@ class UnsupervisedTransliteratorTrainer:
     
         # initialize the Dirichlet Prior values 
         self._init_dirichlet_priors()
+        #self._make_sparse_prior()
 
         # initialize transliteration probabilities 
         self._init_param_values()

@@ -934,9 +934,13 @@ def compute_entropy(model_fname):
 
     logz_func=np.vectorize(log_z,otypes=[np.float])
 
-    print np.average( np.sum( -1.0*translit_model.param_values*logz_func(translit_model.param_values),
+    entropy=np.average( np.sum( -1.0*translit_model.param_values*logz_func(translit_model.param_values),
                 axis=1)
         )
+
+    print entropy
+
+    return entropy
 
 ### Wrapper methods 
 
