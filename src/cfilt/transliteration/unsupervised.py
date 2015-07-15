@@ -52,6 +52,7 @@ class UnsupervisedTransliteratorTrainer:
         # Each word-pair is indexed by its position in the input corpus (starting at 0)
 
         # list of all possible alignments for each word pair 
+        # each element is a tuple [e_id,f_id], the ids are the fundamental character units
         self.wpairs_aligns=[]
 
         # list of weights for all possible alignments for a word pair 
@@ -62,7 +63,9 @@ class UnsupervisedTransliteratorTrainer:
 
         ############   parameter information
 
-        # for each parameter (which corresponds to a point alignment), the list of occurences in of this point alignment all possible (wordpair,alignment) locations in the corpus
+        # for each parameter (which corresponds to a point alignment), 
+        # the list of occurences in of this point alignment all possible (wordpair_id,alignment_id) locations in the corpus
+        # the ids are indices into the wpair_aligns list and the alignment lists that consitute it
         self.param_occurence_info=defaultdict(lambda :defaultdict(list))
 
         # Parameter values in the previous iteration 
