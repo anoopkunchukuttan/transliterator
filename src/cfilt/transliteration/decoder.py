@@ -78,6 +78,14 @@ class TransliterationModel:
         # Dictionary of parameter values (point alignment) to its probability
         self.param_values={}
 
+    def add_f_sym(self,sym): 
+        self.f_sym_id_map[sym]=len(self.f_sym_id_map)
+        self.f_id_sym_map[self.f_sym_id_map[sym]]=sym
+
+    def add_e_sym(self,sym): 
+        self.e_sym_id_map[sym]=len(self.e_sym_id_map)
+        self.e_id_sym_map[self.e_sym_id_map[sym]]=sym
+
 class TransliterationDecoder: 
 
     def __init__(self,translit_model, lm_model, order=2): 
