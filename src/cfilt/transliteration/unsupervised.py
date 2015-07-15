@@ -173,15 +173,15 @@ class UnsupervisedTransliteratorTrainer:
 
                 # create 'f' sym to id mapping
                 # TODO: check if this works correctly in the unsupervised case
-                fs_id=  self._translit_model.f_sym_id_map[fs]  if   self._translit_model.f_sym_id_map.has_key(fs) else len(self._translit_model.f_sym_id_map)
-                if fs_id==len(self._translit_model.f_sym_id_map):
-                    self._translit_model.f_sym_id_map[fs]=fs_id
+                if fs not in self._translit_model.f_sym_id_map: 
+                    self._translit_model.add_f_sym(fs)
+                fs_id=  self._translit_model.f_sym_id_map[fs] 
 
                 # create 'e' sym to id mapping
                 # TODO: check if this works correctly in the unsupervised case
-                es_id=  self._translit_model.e_sym_id_map[es]  if   self._translit_model.e_sym_id_map.has_key(es) else len(self._translit_model.e_sym_id_map)
-                if es_id==len(self._translit_model.e_sym_id_map):
-                    self._translit_model.e_sym_id_map[es]=es_id
+                if es not in self._translit_model.e_sym_id_map: 
+                    self._translit_model.add_e_sym(es)
+                es_id=  self._translit_model.e_sym_id_map[es] 
 
                 align.append( [es_id,fs_id] )
            
@@ -214,15 +214,6 @@ class UnsupervisedTransliteratorTrainer:
             else: 
                 print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
 
-        # create inverse id-symbol mappings
-        # for f
-        for s,i in self._translit_model.f_sym_id_map.iteritems():
-            self._translit_model.f_id_sym_map[i]=s
-    
-        # for e
-        for s,i in self._translit_model.e_sym_id_map.iteritems():
-            self._translit_model.e_id_sym_map[i]=s
-  
     def _generate_en_indic_hyperparams(self,params):
 
         alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
@@ -461,21 +452,12 @@ class UnsupervisedTransliteratorTrainer:
         for f_input_word in f_input_words: 
             for c in f_input_word: 
                 if not self._translit_model.f_sym_id_map.has_key(c): 
-                    self._translit_model.f_sym_id_map[c]=len(self._translit_model.f_sym_id_map)
+                    self._translit_model.add_f_sym(c)
 
         # create symbol to id mappings for e (from given list of characters)
-        for i, c in enumerate(e_char_set):
-            self._translit_model.e_sym_id_map[c]=i
+        for c in e_char_set:
+            self._translit_model.add_e_sym(c)
 
-        # create inverse id-symbol mappings
-        # for f
-        for s,i in self._translit_model.f_sym_id_map.iteritems():
-            self._translit_model.f_id_sym_map[i]=s
-    
-        # for e
-        for s,i in self._translit_model.e_sym_id_map.iteritems():
-            self._translit_model.e_id_sym_map[i]=s
-    
         # initialize hyper parameters 
         self._init_dirichlet_priors()
 
