@@ -105,6 +105,9 @@ class TransliterationDecoder:
 
         return self._lm_cache[hist_id,cur_id]
 
+    def _word_log_score(self,word):
+        return srilm.getSentenceProb(self._lm_model,u' '.join(word).encode('utf-8'),len(word))
+
     def _get_param_value( self, e_id, f_input_chars ): 
         if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
             return self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ]
@@ -354,3 +357,123 @@ class TransliterationDecoder:
 
         return nbest_list
 
+
+    ### Compute likelihood for 
+    def _generate_alignments(self,f_word,e_word):
+        """
+            src_word: list of src characters
+            tgt_word: list of tgt characters 
+    
+            return: wpair_info for this pair
+        """
+        nf=len(f_word)
+        ne=len(e_word)
+        allowed_mappings=[1,2]
+    
+        alignment_preseqs=list(it.ifilter( lambda x: sum(x)==nf, 
+                                it.product(allowed_mappings ,repeat=ne)
+                          ))
+    
+        wpairs_aligns=[]
+    
+        for ap in alignment_preseqs:
+    
+            # compute the end offsets on 'f' side for each charseq_pair by cumulative addition 
+            align_offsets=list(ap)
+            for i in range(1,len(align_offsets)):
+                align_offsets[i]=align_offsets[i]+align_offsets[i-1]
+
+            # insert the first starting offset             
+            align_offsets.insert(0,0)            
+    
+            # extract the charseq_pair
+            align=[]
+            for i in range(len(align_offsets)-1): 
+                #charseq_pair=u''.join( f_word[align_offsets[i]:align_offsets[i+1]] ) + u'|' + e_word[i]
+                fs=u''.join( f_word[align_offsets[i]:align_offsets[i+1]] )
+                es=e_word[i]
+
+                # create 'f' sym to id mapping
+                # TODO: check if this works correctly in the unsupervised case
+                fs_id=  self._translit_model.f_sym_id_map[fs]  if   self._translit_model.f_sym_id_map.has_key(fs) else len(self._translit_model.f_sym_id_map)
+                if fs_id==len(self._translit_model.f_sym_id_map):
+                    print 'Warning: unknown character'
+                    self._translit_model.f_sym_id_map[fs]=fs_id
+
+                # create 'e' sym to id mapping
+                # TODO: check if this works correctly in the unsupervised case
+                es_id=  self._translit_model.e_sym_id_map[es]  if   self._translit_model.e_sym_id_map.has_key(es) else len(self._translit_model.e_sym_id_map)
+                if es_id==len(self._translit_model.e_sym_id_map):
+                    print 'Warning: unknown character'
+                    self._translit_model.e_sym_id_map[es]=es_id
+
+                align.append( [es_id,fs_id] )
+           
+            wpairs_aligns.append(align)
+    
+        return wpairs_aligns
+    
+    
+    def _create_alignment_database(self,word_pairs):
+        """
+          every character sequence in the corpus can be uniquely addressed as: 
+            corpus[0][word_pair_idx][align_idx][aln_point_idx]
+    
+          every weight can be indexed as: 
+            corpus[1][word_pair_idx][align_idx]
+    
+        """
+        #TODO: merge _create_alignment_database and _initialize_parameter_structures  into a single function _prepare_corpus_supervised
+
+        wpairs_aligns=[]
+        wpairs_weights=[]
+        wpairs_eword_weights=[]
+    
+        for f,e in word_pairs: 
+            alignments=self._generate_alignments(f,e)
+            if len(alignments)>0:
+                wpairs_aligns.append(alignments)
+                wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
+                wpairs_eword_weights.append(1.0)
+            else: 
+                print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+
+        ## create inverse id-symbol mappings
+        ## for f
+        #for s,i in self._translit_model.f_sym_id_map.iteritems():
+        #    self._translit_model.f_id_sym_map[i]=s
+    
+        ## for e
+        #for s,i in self._translit_model.e_sym_id_map.iteritems():
+        #    self._translit_model.e_id_sym_map[i]=s
+
+        return it.izip(wpairs_aligns, wpairs_weights, wpairs_eword_weights)
+
+    def compute_log_likelihood(self, word_pairs): 
+
+        ll=0.0
+        i=0
+        for (wpair_aligns, wpair_weights, wpair_eword_weight), (f, e) in it.izip(self._create_alignment_database(word_pairs), word_pairs): 
+            wll=0.0
+            for wpair_align in wpair_aligns: 
+                for e_id, f_id in wpair_align: 
+                    wll+=log_z(self._translit_model.param_values[e_id, f_id]) 
+            wll+=float(len(wpair_aligns))*log_z(1.0/float( len(wpair_aligns) ))
+            wll+=self._word_log_score(e)
+            ll+=wll
+
+            #print '========= {} {} ==============='.format(i,len(wpair_aligns)) 
+            i=i+1
+
+        return ll             
+
+#def log_likelihood_cli(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname):
+#    xlit_model=TransliterationModel.load_translit_model(translit_model_fname)
+#    lm_model=load_lm_model(lm_fname)
+#    wpair_list=read_parallel_corpus(fcorpus_fname,ecorpus_fname)
+#
+#    decoder=TransliterationDecoder(xlit_model,lm_model)
+#    print decoder.compute_log_likelihood(wpair_list)
+#
+#if __name__=='__main__':
+#    log_likelihood_cli(*sys.argv[1:])
