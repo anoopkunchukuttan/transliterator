@@ -79,12 +79,14 @@ class TransliterationModel:
         self.param_values={}
 
     def add_f_sym(self,sym): 
-        self.f_sym_id_map[sym]=len(self.f_sym_id_map)
-        self.f_id_sym_map[self.f_sym_id_map[sym]]=sym
+        if sym not in self.f_sym_id_map: 
+            self.f_sym_id_map[sym]=len(self.f_sym_id_map)
+            self.f_id_sym_map[self.f_sym_id_map[sym]]=sym
 
     def add_e_sym(self,sym): 
-        self.e_sym_id_map[sym]=len(self.e_sym_id_map)
-        self.e_id_sym_map[self.e_sym_id_map[sym]]=sym
+        if sym not in self.e_sym_id_map: 
+            self.e_sym_id_map[sym]=len(self.e_sym_id_map)
+            self.e_id_sym_map[self.e_sym_id_map[sym]]=sym
 
 class TransliterationDecoder: 
 
@@ -485,3 +487,4 @@ class TransliterationDecoder:
 #
 #if __name__=='__main__':
 #    log_likelihood_cli(*sys.argv[1:])
+

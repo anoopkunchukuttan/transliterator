@@ -236,6 +236,56 @@ class UnsupervisedTransliteratorTrainer:
 
         return alpha
 
+    def _generate_indic_hyperparams(self,params):
+
+        src=params['src']
+        tgt=params['tgt']
+
+        ## add new mappings
+        for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
+            offset= langinfo.get_offset(e_sym,tgt)
+            if offset >=langinfo.COORDINATED_RANGE_START_INCLUSIVE and offset <= langinfo.COORDINATED_RANGE_END_INCLUSIVE:
+                f_sym_x=UnicodeIndicTransliterator.transliterate(e_sym,tgt,src)
+                if f_sym_x in self._translit_model.f_sym_id_map: 
+
+                    ## add 1-2 mappings for consonants
+                    f_offset=langinfo.get_offset(f_sym_x,src)
+                    if f_offset >=0x15 and f_offset <= 0x39:  ## if consonant
+                        # consonant with aa ki maatra 
+                        f_with_aa=f_sym_x+langinfo.offset_to_char(0x3e,src)
+                        self._translit_model.add_f_sym(f_with_aa)
+
+                        # consonant with halant 
+                        f_with_halant=f_sym_x+langinfo.offset_to_char(0x4d,src)
+                        self._translit_model.add_f_sym(f_with_halant)
+
+        ## initialize hyperparams 
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+        print '=='
+        print alpha.shape
+
+        for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
+            offset= langinfo.get_offset(e_sym,tgt)
+            if offset >=langinfo.COORDINATED_RANGE_START_INCLUSIVE and offset <= langinfo.COORDINATED_RANGE_END_INCLUSIVE:
+                f_sym_x=UnicodeIndicTransliterator.transliterate(e_sym,tgt,src)
+                if f_sym_x in self._translit_model.f_sym_id_map: 
+                    alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=params['base_measure_mapping_exists']
+
+                    ## add 1-2 mappings for consonants
+                    f_offset=langinfo.get_offset(f_sym_x,src)
+                    if f_offset >=0x15 and f_offset <= 0x39:  ## if consonant
+                        # consonant with aa ki maatra 
+                        f_with_aa=f_sym_x+langinfo.offset_to_char(0x3e,src)
+                        alpha[e_id,self._translit_model.f_sym_id_map[f_with_aa]]=params['base_measure_mapping_exists']
+
+                        # consonant with halant 
+                        f_with_halant=f_sym_x+langinfo.offset_to_char(0x4d,src)
+                        alpha[e_id,self._translit_model.f_sym_id_map[f_with_halant]]=params['base_measure_mapping_exists']
+
+                    alpha[e_id,:]*=params['scale_factor_mapping_exists']
+
+        return alpha 
+
     def _init_param_values(self):
 
         if  not hasattr(self,'_initmethod') or self._initmethod=='random':
@@ -253,19 +303,7 @@ class UnsupervisedTransliteratorTrainer:
                                 len(self._translit_model.f_sym_id_map)]) * 1.0/len(self._translit_model.f_sym_id_map)
 
         elif  self._initmethod=='indic_mapping':
-
-            alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
-            src=self._initparams['src']
-            tgt=self._initparams['tgt']
-
-            for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
-                offset=ord(e_sym)-langinfo.SCRIPT_RANGES[tgt][0]
-                if offset >=langinfo.COORDINATED_RANGE_START_INCLUSIVE and offset <= langinfo.COORDINATED_RANGE_END_INCLUSIVE:
-                    f_sym_x=UnicodeIndicTransliterator.transliterate(e_sym,tgt,src)
-                    if f_sym_x in self._translit_model.f_sym_id_map: 
-                        alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=self._initparams['base_measure_mapping_exists']
-                        alpha[e_id,:]*=self._initparams['scale_factor_mapping_exists']
-
+            alpha=self._generate_indic_hyperparams(self._initparams)
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
 
@@ -273,9 +311,6 @@ class UnsupervisedTransliteratorTrainer:
             alpha=self._generate_en_indic_hyperparams(self._initparams)
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
-
-            df=pd.DataFrame(self._translit_model.param_values)
-            df.to_csv('paramvalues.csv')
 
     #def _make_sparse_prior(self):
     #    if hasattr(self,'_priormethod') and 'sparse_prior' in self._priorparams:
@@ -294,20 +329,10 @@ class UnsupervisedTransliteratorTrainer:
                 print 'Scale: {}'.format(self._priorparams['scale'] )
 
             elif self._priormethod=='indic_mapping':
-                self._alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
-                src=self._priorparams['src']
-                tgt=self._priorparams['tgt']
-
-                for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
-                    offset=ord(e_sym)-langinfo.SCRIPT_RANGES[tgt][0]
-                    if offset >=langinfo.COORDINATED_RANGE_START_INCLUSIVE and offset <= langinfo.COORDINATED_RANGE_END_INCLUSIVE:
-                        f_sym_x=UnicodeIndicTransliterator.transliterate(e_sym,tgt,src)
-                        if f_sym_x in self._translit_model.f_sym_id_map: 
-                            self._alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=self._priorparams['base_measure_mapping_exists']
-                            self._alpha[e_id,:]*=self._priorparams['scale_factor_mapping_exists']
+                self._alpha=self._generate_indic_hyperparams(self._priorparams)
 
             elif  self._initmethod=='en_il_mapping':
-                self._alpha=self._generate_en_indic_hyperparams(self._initparams)
+                self._alpha=self._generate_en_indic_hyperparams(self._priorparams)
 
             elif self._priormethod=='add_one_smoothing':
                 self._alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
@@ -458,14 +483,35 @@ class UnsupervisedTransliteratorTrainer:
         for c in e_char_set:
             self._translit_model.add_e_sym(c)
 
+        print '1: {}'.format(len(self._translit_model.f_sym_id_map))
+
         # initialize hyper parameters 
         self._init_dirichlet_priors()
+        print self._alpha.shape
+        print '2: {}'.format(len(self._translit_model.f_sym_id_map))
 
         #####  initialize transliteration probabilities #####
         self._init_param_values()
+        print self._translit_model.param_values.shape
+        print '3: {}'.format(len(self._translit_model.f_sym_id_map))
 
         #####  previous parameter values  #####
         self.prev_param_values=np.zeros([len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)])
+
+    def _update_param_info(self): 
+        n_new_f_chars=len(self._translit_model.f_sym_id_map)-self._translit_model.param_values.shape[1]
+        if n_new_f_chars>0:
+            self._translit_model.param_values=np.concatenate(   (self._translit_model.param_values,
+                                                                np.zeros((self._translit_model.param_values.shape[0],n_new_f_chars))),
+                                                                axis=1)
+
+            self.prev_param_values=np.concatenate(   (self.prev_param_values,
+                                                                np.zeros((self.prev_param_values.shape[0],n_new_f_chars))),
+                                                                axis=1)
+
+            self._alpha=np.concatenate(   (self._alpha,
+                                            np.ones((self._alpha.shape[0],n_new_f_chars))  ),
+                                        axis=1)
 
     def _prepare_corpus_unsupervised(self,word_triplets, append=True): 
         """
@@ -604,7 +650,6 @@ class UnsupervisedTransliteratorTrainer:
             output_words=parallel_decode(self._translit_model, self._lm_model, f_input_words)
             word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
-            # initialize the EM training
             print "Preparing corpus"
             self._prepare_corpus_unsupervised(word_triplets,append)
             ## >>>
@@ -618,6 +663,10 @@ class UnsupervisedTransliteratorTrainer:
             #print "Preparing corpus"
             #self._prepare_corpus_unsupervised_topn(word_triplets, topn)
             #### >>>
+
+            # initialize the EM training
+            print "Updating param info" 
+            self._update_param_info()
 
             # estimate alignment parameters
             print "Estimating parameters"
