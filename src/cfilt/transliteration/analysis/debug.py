@@ -49,20 +49,24 @@ def likelihood(log_dir):
 
     lm_fname='/home/development/anoop/experiments/unsupervised_transliterator/data/lm/nonparallel/pb/2g/hi.lm'
     fcorpus_fname='/home/development/anoop/experiments/unsupervised_transliterator/data/nonparallel/pb/bn-hi/train.bn'
+    #ecorpus_fname='/home/development/anoop/experiments/unsupervised_transliterator/data/parallel/pb/bn-hi/train.hi'
 
     for itern in get_iterations(log_dir)[1:]: 
-
+        ecorpus_fname='{}/{}/{}'.format(log_dir,itern,'transliterations.txt')
         likelihood=parallel_likelihood(TransliterationModel.load_translit_model( '{}/{}/{}'.format(log_dir,itern,'translit.model') ), 
                                     load_lm_model(lm_fname),
-                                    read_parallel_corpus(fcorpus_fname,'{}/{}/{}'.format(log_dir,itern,'transliterations.txt'))
+                                    read_parallel_corpus(fcorpus_fname,ecorpus_fname)
                                   )
 
         print likelihood    
 
 def equal_sentences(): 
-    for i in xrange(1,10): 
-        bitvec=[len(f)==len(e) for f, e in it.izip(read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/nonparallel/pb/bn-hi/train.bn'),read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/pb/7_b_again/bn-hi/log/{}/transliterations.txt'.format(i) ))]
-        print sum(bitvec) 
+    #for i in xrange(1,10): 
+    #    bitvec=[len(f)==len(e) for f, e in it.izip(read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/nonparallel/pb/bn-hi/train.bn'),read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/pb/7_b_again/bn-hi/log/{}/transliterations.txt'.format(i) ))]
+    #    print sum(bitvec) 
+
+    bitvec=[len(f)>=len(e) for f, e in it.izip(read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/parallel/pb/bn-hi/train.bn'),read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/parallel/pb/bn-hi/train.hi' ))]
+    print sum(bitvec) 
 
 def debug_training(log_dir): 
    #print list(av_entropy_generator(log_dir))

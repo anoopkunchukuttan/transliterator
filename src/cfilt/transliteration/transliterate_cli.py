@@ -52,12 +52,12 @@ def transliterate_topn(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fn
                 ofile.write( u'{} ||| {} ||| {} ||| {}\n'.format( i, u' '.join(candidate), u' ', score  ) )
 
 
-def log_likelihood(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, n_processes=None):
+def log_likelihood_unsupervised(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, n_processes=None):
 
     if n_processes is not None: 
         n_processes=int(n_processes)
 
-    likelihood=parallel_likelihood(TransliterationModel.load_translit_model(translit_model_fname), 
+    likelihood=parallel_likelihood_unsupervised(TransliterationModel.load_translit_model(translit_model_fname), 
                                 load_lm_model(lm_fname),
                                 read_parallel_corpus(fcorpus_fname,ecorpus_fname),
                                 n_processes
@@ -72,7 +72,7 @@ if __name__=='__main__':
                 'sup_train':supervised_training,
                 'transliterate':transliterate,
                 'transliterate_topn':transliterate_topn,
-                'log_likelihood':log_likelihood,
+                'log_likelihood_unsup':log_likelihood_unsupervised,
             }
 
     commands[sys.argv[1]](*sys.argv[2:])

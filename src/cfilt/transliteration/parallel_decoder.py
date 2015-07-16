@@ -17,8 +17,8 @@ def initdecoder(translit_model,lm_model):
 def task_decode(src):
     return decoder.decode(src)
 
-def task_loglikelihood(wpair):
-    return decoder.compute_log_likelihood([wpair])
+def task_loglikelihood_unsupervised(wpair):
+    return decoder.compute_log_likelihood_unsupervised([wpair])
 
 # Convenience functions for parallel decoding
 def parallel_decode(translit_model,lm_model,word_list,
@@ -34,13 +34,13 @@ def parallel_decode(translit_model,lm_model,word_list,
     return output
 
 # Convenience functions for parallel decoding
-def parallel_likelihood(translit_model,lm_model,word_pair_list,
+def parallel_likelihood_unsupervised(translit_model,lm_model,word_pair_list,
                      n_processes=None,
                    ): 
 
     pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model]) 
 
-    wll_list=pool.map(task_loglikelihood,word_pair_list)
+    wll_list=pool.map(task_loglikelihood_unsupervised,word_pair_list)
     pool.close()
     pool.join()
 

@@ -446,7 +446,10 @@ class TransliterationDecoder:
                 wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
                 wpairs_eword_weights.append(1.0)
             else: 
-                print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+                #msg=u"No alignments from word pair: {} {}".format(u''.join(f),u''.join(e))
+                #msg=u"No alignments from word pair: " + u''.join(f) + u" " + u''.join(e)
+                #print msg.encode('utf-8') 
+                pass 
 
         ## create inverse id-symbol mappings
         ## for f
@@ -459,17 +462,34 @@ class TransliterationDecoder:
 
         return it.izip(wpairs_aligns, wpairs_weights, wpairs_eword_weights)
 
-    def compute_log_likelihood(self, word_pairs): 
+    def compute_log_likelihood_unsupervised(self, word_pairs): 
 
         ll=0.0
         i=0
         for (wpair_aligns, wpair_weights, wpair_eword_weight), (f, e) in it.izip(self._create_alignment_database(word_pairs), word_pairs): 
             wll=0.0
-            for wpair_align in wpair_aligns: 
+            for wpair_align, wpair_weight in it.izip(wpair_aligns,wpair_weights): 
                 for e_id, f_id in wpair_align: 
                     wll+=log_z(self._translit_model.param_values[e_id, f_id]) 
-            wll+=float(len(wpair_aligns))*log_z(1.0/float( len(wpair_aligns) ))
+                wll*=wpair_weight                    
             wll+=self._word_log_score(e)
+            ll+=wll
+
+            #print '========= {} {} ==============='.format(i,len(wpair_aligns)) 
+            i=i+1
+
+        return ll             
+
+    def compute_log_likelihood_supervised(self, wpairs_aligns, wpairs_weights): 
+
+        ll=0.0
+        i=0
+        for wpair_aligns, wpair_weights in it.izip(wpairs_aligns, wpairs_weights): 
+            wll=0.0
+            for wpair_align, wpair_weight in it.izip(wpair_aligns,wpair_weights): 
+                for e_id, f_id in wpair_align: 
+                    wll+=log_z(self._translit_model.param_values[e_id, f_id]) 
+                wll*=wpair_weight                    
             ll+=wll
 
             #print '========= {} {} ==============='.format(i,len(wpair_aligns)) 
