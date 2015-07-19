@@ -6,6 +6,7 @@ import numpy as np, math
 import pandas as pd
 import random
 import yaml 
+import copy
 
 import srilm
 
@@ -314,11 +315,11 @@ class UnsupervisedTransliteratorTrainer:
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
 
-    #def _make_sparse_prior(self):
-    #    if hasattr(self,'_priormethod') and 'sparse_prior' in self._priorparams:
-    #        max_vals=np.apply_along_axis(np.max,1,self._alpha)
-    #        t=self._alpha.T/max_vals-1
-    #        self._alpha=t.T
+    def _make_sparse_prior(self):
+        #if hasattr(self,'_priormethod') and 'sparse_prior' in self._priorparams:
+        max_vals=np.apply_along_axis(np.max,1,self._alpha)
+        t=self._alpha.T/max_vals
+        self._alpha=t.T
 
     def _init_dirichlet_priors(self): 
 
@@ -424,27 +425,18 @@ class UnsupervisedTransliteratorTrainer:
             os.mkdir('{}/{}'.format(self._config['log_dir'],iter_no))
             TransliterationModel.save_translit_model( self._translit_model  , '{}/{}/translit.model'.format(self._config['log_dir'],iter_no) )
 
-            #with codecs.open('{}/{}/likelihood.txt'.format(self._config['log_dir'],iter_no) , 'w',  'utf-8' ) as ofile:
-            #    decoder=TransliterationDecoder(self._translit_model, self._lm_model, order=2)
-            #    likelihood=decoder.compute_log_likelihood_supervised(self.wpairs_aligns,self.wpairs_weights)    
-            #    ofile.write('{}'.format(likelihood))
-
             with open('{}/{}/wpairs_aligns.pickle'.format(self._config['log_dir'],iter_no) , 'w' ) as ofile:
                 pickle.dump(self.wpairs_aligns,ofile)
 
             with open('{}/{}/wpairs_weights.pickle'.format(self._config['log_dir'],iter_no) , 'w' ) as ofile:
                 pickle.dump(self.wpairs_weights,ofile)
 
-            # write intemediate transliterations 
+            with open('{}/{}/wpairs_eword_weights.pickle'.format(self._config['log_dir'],iter_no) , 'w' ) as ofile:
+                pickle.dump(self.wpairs_eword_weights,ofile)
+
             if word_triplets is not None:
-                with codecs.open('{}/{}/transliterations.txt'.format(self._config['log_dir'],iter_no) , 'w',  'utf-8' ) as ofile:
-
-                    for src_w, tgt_w, prev_tgt_w in word_triplets:
-                        ofile.write(' '.join(tgt_w)+'\n')
-
-                    #for f,e_cands in word_triplets: 
-                    #    for e, score in e_cands: 
-                    #        ofile.write(' '.join(e)+'\n')
+                with open('{}/{}/word_triplets.pickle'.format(self._config['log_dir'],iter_no) , 'w' ) as ofile:
+                    pickle.dump(word_triplets,ofile)
 
     def em_supervised_train(self,word_pairs): 
         """
@@ -472,13 +464,6 @@ class UnsupervisedTransliteratorTrainer:
             # E-step 
             self._e_step()
 
-        #self.print_obj()
-        #self.print_params()
-        #print "Final parameters"
-        #for e_id in range(len(self._translit_model.e_sym_id_map)): 
-        #    for f_id in range(len(self._translit_model.f_sym_id_map)): 
-        #        #print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
-        #        print u"P({}|{})={}".format(f_id,e_id,self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
 
     ############################################
     ### Unsupervised training functions ########
@@ -523,39 +508,7 @@ class UnsupervisedTransliteratorTrainer:
                                             np.ones((self._alpha.shape[0],n_new_f_chars))  ),
                                         axis=1)
 
-    def _prepare_corpus_unsupervised(self,word_triplets, append=True): 
-        """
-          symbol mappings have already been created using '_initialize_unsupervised_training' 
-
-          every character sequence in the corpus can be uniquely addressed as: 
-          corpus[0][word_pair_idx][align_idx][aln_point_idx]
-    
-          every weight can be indexed as: 
-          corpus[1][word_pair_idx][align_idx]
-    
-        """
-        self.wpairs_aligns=[]
-        self.wpairs_weights=[]
-    
-        for f,e,e_prev in word_triplets: 
-            alignments=self._generate_alignments(f,e)
-            if len(alignments)>0:
-                self.wpairs_aligns.append(alignments)
-                self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
-            else: 
-                print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
-
-        self.wpairs_eword_weights=[1.0]*len(self.wpairs_aligns)
-
-        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
-   
-        # gather transliteration occurrence info
-        for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-            for aln_idx,align in enumerate(alignments): 
-                for es_id, fs_id in align: 
-                    self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
-    
-    #def _prepare_corpus_unsupervised(self,word_triplets,append): 
+    #def _prepare_corpus_unsupervised(self,word_triplets, append=True): 
     #    """
     #      symbol mappings have already been created using '_initialize_unsupervised_training' 
 
@@ -566,23 +519,16 @@ class UnsupervisedTransliteratorTrainer:
     #      corpus[1][word_pair_idx][align_idx]
     #
     #    """
-    #    if append:
-    #        for widx, (f,e,e_prev) in enumerate(word_triplets): 
-    #            alignments=self._generate_alignments(f,e)
-    #            if len(alignments)>0:
-    #                self.wpairs_aligns.append(alignments)
-    #                self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments) )  
-    #            else: 
-    #                print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
-    #    else:                         
-    #        for widx, (f,e,e_prev) in enumerate(word_triplets): 
-    #            if e!=e_prev:
-    #                alignments=self._generate_alignments(f,e)
-    #                if len(alignments)>0:
-    #                    self.wpairs_aligns[widx]=alignments
-    #                    self.wpairs_weights[widx]=[1.0/float( len(alignments) )] *  len(alignments)  
-    #                else: 
-    #                    print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+    #    self.wpairs_aligns=[]
+    #    self.wpairs_weights=[]
+    #
+    #    for f,e,e_prev in word_triplets: 
+    #        alignments=self._generate_alignments(f,e)
+    #        if len(alignments)>0:
+    #            self.wpairs_aligns.append(alignments)
+    #            self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
+    #        else: 
+    #            print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
 
     #    self.wpairs_eword_weights=[1.0]*len(self.wpairs_aligns)
 
@@ -593,6 +539,47 @@ class UnsupervisedTransliteratorTrainer:
     #        for aln_idx,align in enumerate(alignments): 
     #            for es_id, fs_id in align: 
     #                self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
+    
+    def _prepare_corpus_unsupervised(self,word_triplets,append): 
+        """
+          symbol mappings have already been created using '_initialize_unsupervised_training' 
+
+          every character sequence in the corpus can be uniquely addressed as: 
+          corpus[0][word_pair_idx][align_idx][aln_point_idx]
+    
+          every weight can be indexed as: 
+          corpus[1][word_pair_idx][align_idx]
+    
+        """
+        if append:
+            for widx, (f,e,e_prev) in enumerate(word_triplets): 
+                alignments=self._generate_alignments(f,e)
+                if len(alignments)>0:
+                    self.wpairs_aligns.append(alignments)
+                    self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments) )  
+                else: 
+                    print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+        else:                         
+            for widx, (f,e,e_prev) in enumerate(word_triplets): 
+                if e!=e_prev:
+                    alignments=self._generate_alignments(f,e)
+                    if len(alignments)>0:
+                        self.wpairs_aligns[widx]=alignments
+                        self.wpairs_weights[widx]=[1.0/float( len(alignments) )] *  len(alignments)  
+                    else: 
+                        print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+                else: 
+                    pass 
+
+        self.wpairs_eword_weights=[1.0]*len(self.wpairs_aligns)
+
+        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
+   
+        # gather transliteration occurrence info
+        for wp_idx,alignments in enumerate(self.wpairs_aligns): 
+            for aln_idx,align in enumerate(alignments): 
+                for es_id, fs_id in align: 
+                    self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
 
     def _normalize_topn_scores(self,translation_output): 
        
@@ -602,30 +589,78 @@ class UnsupervisedTransliteratorTrainer:
         e_scores=[ (N+score)/(len(e_scores)*N+sum(e_scores)) for score in e_scores ]
         return zip(e_words,e_scores)
 
+#    def _prepare_corpus_unsupervised_topn(self,word_triplets, topn, append=True): 
+#        """
+#    
+#        """
+#        self.wpairs_aligns=[]
+#        self.wpairs_weights=[]
+#        self.wpairs_eword_weights=[]
+#   
+#        # normalize top-k scores 
+#        input_words= [ f for f, e_cands in word_triplets ]
+#        translation_outputs= [ e_cands for f, e_cands in word_triplets ]
+#        translation_outputs=[ self._normalize_topn_scores(x) for x in translation_outputs]
+#        word_triplets=list(it.izip(input_words,translation_outputs))
+#
+#        # generate alignment information
+#        for f,e_cands in word_triplets: 
+#            for e, score in e_cands: 
+#                alignments=self._generate_alignments(f,e)
+#                if len(alignments)>0:
+#                    self.wpairs_aligns.append(alignments)
+#                    self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
+#                    self.wpairs_eword_weights.append(score)
+#                else: 
+#                    print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+#
+#        # gather transliteration occurrence info
+#        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
+#
+#        for wp_idx,alignments in enumerate(self.wpairs_aligns): 
+#            for aln_idx,align in enumerate(alignments): 
+#                for es_id, fs_id in align: 
+#                    self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
+    
     def _prepare_corpus_unsupervised_topn(self,word_triplets, topn, append=True): 
         """
     
         """
-        self.wpairs_aligns=[]
-        self.wpairs_weights=[]
-        self.wpairs_eword_weights=[]
-   
-        # normalize top-k scores 
-        input_words= [ f for f, e_cands in word_triplets ]
-        translation_outputs= [ e_cands for f, e_cands in word_triplets ]
-        translation_outputs=[ self._normalize_topn_scores(x) for x in translation_outputs]
-        word_triplets=list(it.izip(input_words,translation_outputs))
-
         # generate alignment information
-        for f,e_cands in word_triplets: 
-            for e, score in e_cands: 
-                alignments=self._generate_alignments(f,e)
-                if len(alignments)>0:
-                    self.wpairs_aligns.append(alignments)
-                    self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
-                    self.wpairs_eword_weights.append(score)
-                else: 
-                    print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+        if append:
+            ## first time
+            for widx, (f, e_cands, e_prev_cands) in enumerate(word_triplets): 
+                for e, score in e_cands: 
+                    alignments=self._generate_alignments(f,e)
+                    if len(alignments)>0:
+                        self.wpairs_aligns.append(alignments)
+                        self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
+                        self.wpairs_eword_weights.append(score)
+                    else: 
+                        print u"Warning: No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+        else: 
+            ## subsequently, check for possibility of reuse 
+            wpairs_aligns_prev=copy.deepcopy(self.wpairs_aligns)
+            wpairs_weights_prev=copy.deepcopy(self.wpairs_weights)
+
+            for widx, (f, e_cands, e_prev_cands) in enumerate(word_triplets): 
+                e_prev_candwords=[ w for w,s in e_prev_cands]
+                for cidx, (e, score) in enumerate(e_cands): 
+                    if e in e_prev_candwords: 
+                        ## reuse alignments & weights 
+                        cidx_prev=e_prev_candwords.index(e)
+                        self.wpairs_aligns[widx*topn+cidx]=wpairs_aligns_prev[widx*topn+cidx_prev]
+                        self.wpairs_weights[widx*topn+cidx]=wpairs_weights_prev[widx*topn+cidx_prev]
+                    else:
+                        ## regenerate alignments  and weights 
+                        alignments=self._generate_alignments(f,e)
+                        if len(alignments)>0:
+                            self.wpairs_aligns[widx*topn+cidx]=alignments
+                            self.wpairs_weights[widx*topn+cidx]=[1.0/float( len(alignments) )] *  len(alignments)  
+                        else: 
+                            print u"Warning: No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
+
+                    self.wpairs_eword_weights[widx*topn+cidx]=score
 
         # gather transliteration occurrence info
         self.param_occurence_info=defaultdict(lambda :defaultdict(list))
@@ -666,15 +701,17 @@ class UnsupervisedTransliteratorTrainer:
 
             #### >>> top-k candidate based training (without updating alignment probabilities ie not using e-step)
             #print "Parallel Decoding for EM"
-            ## translation outputs: list of tuples (source word, list of tuples(target, probability)  )
-            #word_triplets=list(it.izip( f_input_words , parallel_decode_topn(self._translit_model, self._lm_model, f_input_words, topn) ) )
+            #prev_outputs=output_words if output_words is not None else [ [ ('',1.0/float(topn))  ]*topn ]*len(f_input_words)
+            #output_words=parallel_decode_topn(self._translit_model, self._lm_model, f_input_words, topn)
+            #output_words=[ self._normalize_topn_scores(x) for x in output_words]
+            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
             ## initialize the EM training
             #print "Preparing corpus"
-            #self._prepare_corpus_unsupervised_topn(word_triplets, topn)
+            #self._prepare_corpus_unsupervised_topn(word_triplets, topn, append)
             #### >>>
 
-            ## initialize the EM training
+            ## Updating param info to account for new parameters 
             #print "Updating param info" 
             #self._update_param_info()
 
@@ -692,6 +729,6 @@ class UnsupervisedTransliteratorTrainer:
                 break
     
             ######  E-step ####
-            #print "Computing alignment weights" 
-            #self._e_step()
+            print "Computing alignment weights" 
+            self._e_step()
 

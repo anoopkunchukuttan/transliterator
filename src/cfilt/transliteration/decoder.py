@@ -118,9 +118,9 @@ class TransliterationDecoder:
     def _word_log_score(self,word):
         return srilm.getSentenceProb(self._lm_model,u' '.join(word).encode('utf-8'),len(word))
 
-    def _get_param_value( self, e_id, f_input_chars ): 
+    def _get_param_value( self, e_id, f_input_chars, stretch=3.0 ): 
         if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
-            return self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ]
+            return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],stretch)
         else:
             return 0.0
 
@@ -462,11 +462,36 @@ class TransliterationDecoder:
 
         return it.izip(wpairs_aligns, wpairs_weights, wpairs_eword_weights)
 
-    def compute_log_likelihood_unsupervised(self, word_pairs): 
+    #def compute_log_likelihood_unsupervised(self, word_pairs): 
+
+    #    ll=0.0
+    #    i=0
+    #    for (wpair_aligns, wpair_weights, wpair_eword_weight), (f, e) in it.izip(self._create_alignment_database(word_pairs), word_pairs): 
+    #        wll=0.0
+    #        for wpair_align, wpair_weight in it.izip(wpair_aligns,wpair_weights): 
+    #            for e_id, f_id in wpair_align: 
+    #                wll+=log_z(self._translit_model.param_values[e_id, f_id]) 
+    #            wll*=wpair_weight                    
+    #        wll+=self._word_log_score(e)
+    #        ll+=wll
+
+    #        #print '========= {} {} ==============='.format(i,len(wpair_aligns)) 
+    #        i=i+1
+
+    #    return ll             
+
+    def compute_log_likelihood_unsupervised(self, word_pairs, wpairs_aligns=None, wpairs_weights=None,wpairs_eword_weights=None): 
+
+        alignment_info=None
+
+        if wpairs_aligns is None: 
+            alignment_info=self._create_alignment_database(word_pairs)
+        else:
+            alignment_info=it.izip(wpairs_aligns,wpairs_weights,wpairs_eword_weights)
 
         ll=0.0
         i=0
-        for (wpair_aligns, wpair_weights, wpair_eword_weight), (f, e) in it.izip(self._create_alignment_database(word_pairs), word_pairs): 
+        for (wpair_aligns, wpair_weights, wpair_eword_weight), (f, e) in it.izip(alignment_info, word_pairs): 
             wll=0.0
             for wpair_align, wpair_weight in it.izip(wpair_aligns,wpair_weights): 
                 for e_id, f_id in wpair_align: 
