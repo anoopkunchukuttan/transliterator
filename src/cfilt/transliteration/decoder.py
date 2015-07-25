@@ -98,13 +98,6 @@ class TransliterationDecoder:
         e_vocabsize=len(self._translit_model.e_id_sym_map)
         self._lm_cache=np.ones(  (e_vocabsize,e_vocabsize)  )*-1.0
 
-    #def _bigram_score(self,hist_id,cur_id):
-    #    """
-    #    """
-    #    bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
-    #                            self._translit_model.e_id_sym_map[cur_id])
-    #    return math.pow( 10 , srilm.getBigramProb(self._lm_model,bigram.encode('utf-8')) )
-
     def _bigram_score(self,hist_id,cur_id):
         """
         """
@@ -131,13 +124,6 @@ class TransliterationDecoder:
         """
 
         sm_shape=(len(f_input_word), len(self._translit_model.e_sym_id_map.keys()) )
-
-
-        #print 'Parameter Space: ',
-        #print self._translit_model.param_values.shape
-
-        #print 'Scoring Matrix dimensions: ',
-        #print sm_shape
 
         # score matrix
         score_matrix=np.zeros( sm_shape ) 
@@ -216,12 +202,6 @@ class TransliterationDecoder:
                     max_row_matrix[j,k] = j-1
                     max_char_matrix[j,k] = max_char_1
 
-                #print 'Final: ({} {} {})'.format(score_matrix[j,k],max_row_matrix[j,k],max_char_matrix[j,k])
-
-        #pd.DataFrame(score_matrix).to_csv(''.join(f_input_word)+'.csv')
-        #pd.DataFrame(max_row_matrix).to_csv(''.join(f_input_word)+'_row.csv')
-        #pd.DataFrame(max_char_matrix).to_csv(''.join(f_input_word)+'_char.csv')
-
         # Backtrack and compute the best output sequence
         decoded_output=[]
 
@@ -273,12 +253,6 @@ class TransliterationDecoder:
         """
 
         sm_shape=(len(f_input_word), len(self._translit_model.e_sym_id_map.keys()), topn )
-
-        #print 'Parameter Space: ',
-        #print self._translit_model.param_values.shape
-
-        #print 'Scoring Matrix dimensions: ',
-        #print sm_shape
 
         # score matrix
         score_matrix=np.zeros( sm_shape ) 
@@ -462,24 +436,6 @@ class TransliterationDecoder:
 
         return it.izip(wpairs_aligns, wpairs_weights, wpairs_eword_weights)
 
-    #def compute_log_likelihood_unsupervised(self, word_pairs): 
-
-    #    ll=0.0
-    #    i=0
-    #    for (wpair_aligns, wpair_weights, wpair_eword_weight), (f, e) in it.izip(self._create_alignment_database(word_pairs), word_pairs): 
-    #        wll=0.0
-    #        for wpair_align, wpair_weight in it.izip(wpair_aligns,wpair_weights): 
-    #            for e_id, f_id in wpair_align: 
-    #                wll+=log_z(self._translit_model.param_values[e_id, f_id]) 
-    #            wll*=wpair_weight                    
-    #        wll+=self._word_log_score(e)
-    #        ll+=wll
-
-    #        #print '========= {} {} ==============='.format(i,len(wpair_aligns)) 
-    #        i=i+1
-
-    #    return ll             
-
     def compute_log_likelihood_unsupervised(self, word_pairs, wpairs_aligns=None, wpairs_weights=None,wpairs_eword_weights=None): 
 
         alignment_info=None
@@ -521,15 +477,4 @@ class TransliterationDecoder:
             i=i+1
 
         return ll             
-
-#def log_likelihood_cli(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname):
-#    xlit_model=TransliterationModel.load_translit_model(translit_model_fname)
-#    lm_model=load_lm_model(lm_fname)
-#    wpair_list=read_parallel_corpus(fcorpus_fname,ecorpus_fname)
-#
-#    decoder=TransliterationDecoder(xlit_model,lm_model)
-#    print decoder.compute_log_likelihood(wpair_list)
-#
-#if __name__=='__main__':
-#    log_likelihood_cli(*sys.argv[1:])
 
