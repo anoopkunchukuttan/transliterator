@@ -96,7 +96,7 @@ class TransliterationDecoder:
         self._translit_model=translit_model
 
         e_vocabsize=len(self._translit_model.e_id_sym_map)
-        self._lm_cache=np.ones(  ( int(np.pow(e_vocabsize,self._lm_order-1)), e_vocabsize )  )*-1.0
+        self._lm_cache=np.ones(  ( int(np.power(e_vocabsize,self._lm_order-1)), e_vocabsize )  )*-1.0
 
     def _bigram_score(self,hist_id,cur_id):
         """
