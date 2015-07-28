@@ -604,7 +604,7 @@ class TransliterationDecoder:
 
         cur_id: id of the current symbol. 
        """
-        ngram, len_ngram=_generate_ngram(hist_list,cur_id)
+        ngram, len_ngram=self._generate_ngram(hist_list,cur_id)
         if self._lm_cache[ngram]==-1:
             self._lm_cache[ngram]=math.pow( 10 , srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram) )
 
@@ -704,7 +704,7 @@ class TransliterationDecoder:
         context_size=self._lm_order-1
 
         for k in xrange(int(np.power(e_size,context_size))):
-            k_list=self._generate_list_representation(k)
+            k_list=self._generate_list_representation_if_valid(k)
 
             if len(k_list)>0:
                 yield (k,k_list)
@@ -713,7 +713,7 @@ class TransliterationDecoder:
         context_size=self._lm_order-1
         e_size=len(self._translit_model.e_sym_id_map.keys())
 
-        rel_his=[klist[:-1]]
+        rel_his=[k_list[:-1]]
         if len(k_list)==context_size: 
             rel_his.extend([ c+rel_his[0]  for c in xrange(1,e_size)])
 
@@ -731,18 +731,18 @@ class TransliterationDecoder:
 
         # score matrix
         ## initializing to 1.0, which denotes an invalid entry. Useful for keeping track of length of n-best list
-        score_matrix=np.ones( sm_shape ) 
+        score_matrix=np.ones(sm_shape) 
         # backtracking matrices 
-        max_row_matrix=np.ones( sm_shape ,dtype=int ) * -1
-        max_char_matrix=np.ones( sm_shape,dtype=int ) * -1
-        max_nbest_matrix=np.ones( sm_shape,dtype=int ) * -1 
+        max_row_matrix=np.ones(sm_shape ,dtype=int) * -1
+        max_char_matrix=np.ones(sm_shape,dtype=int) * -1
+        max_nbest_matrix=np.ones(sm_shape,dtype=int) * -1 
 
         # initialization
         for k, k_list in self._generate_all_states():
             #print 'Candidates for {} {}:'.format(0,k)
             #print u'{} {}'.format( self._translit_model.e_id_sym_map[k] ,self._bigram_score(-1,k)).encode('utf-8')
             #print u'{} {} {}'.format( self._translit_model.e_id_sym_map[k] , f_input_word[0], self._get_param_value(  k , f_input_word[0])).encode('utf-8')
-            if len(klist)==1:
+            if len(k_list)==1:
                 score_matrix[0,k,0]= sum ( map ( log_z  ,
                                       #    LM score                    translition matrix score
                                    [ self._ngram_score([],k_list[-1]) , self._get_param_value(  k , f_input_word[0]) ] 
@@ -795,7 +795,7 @@ class TransliterationDecoder:
                                 break
                             v=score_matrix[j-2,m,n] +  sum ( map ( log_z ,
                                        # LM score                    transliteration matrix score
-                                       [ self._ngram_score(m_list,k_list[-1]) , self._get_param_value( klist[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] 
+                                       [ self._ngram_score(m_list,k_list[-1]) , self._get_param_value( k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] 
                                  ) 
                                )  
 
@@ -824,7 +824,7 @@ class TransliterationDecoder:
 
         nbest_list= [
                         (
-                            self._backtrack_ngram_nbest_output(max_row_matrix,max_char_matrix,max_nbest_matrix,*candidate),
+                            self._backtrack_nbest_output_ngram(max_row_matrix,max_char_matrix,max_nbest_matrix,*candidate),
                             score_matrix[candidate[0], candidate[1], candidate[2]]
                         )    for candidate in final_top_n_candidates 
 

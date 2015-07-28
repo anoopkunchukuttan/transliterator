@@ -69,7 +69,7 @@ def parallel_decode_topn(translit_model, lm_model, word_list, topn, decoder_para
                      n_processes=None,
                      ): 
 
-    ool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model,decoder_params]) 
+    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model,decoder_params]) 
 
     p_task_decode_topn =  functools.partial(task_decode_topn,topn=topn)
     output=pool.map(p_task_decode_topn,word_list)
