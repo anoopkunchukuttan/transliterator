@@ -5,34 +5,46 @@ from cfilt.transliteration.unsupervised import *
 
 def unsupervised_training(fcorpus_fname, ecorpus_fname, config_param_fname, lm_fname, model_fname):
 
-    lm_model=load_lm_model(lm_fname)
     config_params=read_yaml_file(config_param_fname)
-    em=UnsupervisedTransliteratorTrainer(config_params,lm_model)
-    em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname))
+    em=UnsupervisedTransliteratorTrainer(config_params)
+
+    decoder_params=config_params.get('decoder_params',{})
+    lm_model=load_lm_model(lm_fname,decoder_params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER))
+    em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname),lm_model)
     TransliterationModel.save_translit_model(em._translit_model, model_fname) 
 
-def supervised_training(fcorpus_fname, ecorpus_fname, config_param_fname, lm_fname, model_fname):
+def supervised_training(fcorpus_fname, ecorpus_fname, config_param_fname, model_fname):
 
-    lm_model=load_lm_model(lm_fname)
     config_params=read_yaml_file(config_param_fname)
-    em=UnsupervisedTransliteratorTrainer(config_params,lm_model)
+    em=UnsupervisedTransliteratorTrainer(config_params)
     em.em_supervised_train(read_parallel_corpus(fcorpus_fname,ecorpus_fname))
     TransliterationModel.save_translit_model(em._translit_model, model_fname) 
 
-def transliterate(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, n_processes=None):
+def transliterate(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, decoder_config_fname=None, n_processes=None):
+    
+    decoder_params={}
+    if decoder_config_fname is not None: 
+        decoder_params=read_yaml_file(decoder_config_fname)
+    lm_order=decoder_params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER)
 
     if n_processes is not None: 
         n_processes=int(n_processes)
 
     output=parallel_decode(TransliterationModel.load_translit_model(translit_model_fname), 
-                                load_lm_model(lm_fname),
+                                load_lm_model(lm_fname,lm_order),
                                 read_monolingual_corpus(fcorpus_fname),
+                                decoder_params,
                                 n_processes
                               )
 
     write_monolingual_corpus(ecorpus_fname,output)
 
-def transliterate_topn(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, topn,  n_processes=None):
+def transliterate_topn(translit_model_fname, lm_fname, lm_order, fcorpus_fname, ecorpus_fname, topn,  decoder_config_fname=None, n_processes=None):
+
+    decoder_params={}
+    if decoder_config_fname is not None: 
+        decoder_params=read_yaml_file(decoder_config_fname)
+    lm_order=decoder_params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER)
 
     if n_processes is not None: 
         n_processes=int(n_processes)
@@ -40,9 +52,10 @@ def transliterate_topn(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fn
     topn=int(topn)
 
     output=parallel_decode_topn(TransliterationModel.load_translit_model(translit_model_fname), 
-                                load_lm_model(lm_fname),
+                                load_lm_model(lm_fname,lm_order),
                                 read_monolingual_corpus(fcorpus_fname),
                                 topn,
+                                decoder_params,
                                 n_processes
                               )
 
@@ -52,14 +65,20 @@ def transliterate_topn(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fn
                 ofile.write( u'{} ||| {} ||| {} ||| {}\n'.format( i, u' '.join(candidate), u' ', score  ) )
 
 
-def log_likelihood_unsupervised(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, n_processes=None):
+def log_likelihood_unsupervised(translit_model_fname, lm_fname, lm_order, fcorpus_fname, ecorpus_fname, decoder_config_fname=None, n_processes=None):
+
+    decoder_params={}
+    if decoder_config_fname is not None: 
+        decoder_params=read_yaml_file(decoder_config_fname)
+    lm_order=decoder_params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER)
 
     if n_processes is not None: 
         n_processes=int(n_processes)
 
     likelihood=parallel_likelihood_unsupervised(TransliterationModel.load_translit_model(translit_model_fname), 
-                                load_lm_model(lm_fname),
+                                load_lm_model(lm_fname,lm_order),
                                 read_parallel_corpus(fcorpus_fname,ecorpus_fname),
+                                decoder_params,
                                 n_processes
                               )
 

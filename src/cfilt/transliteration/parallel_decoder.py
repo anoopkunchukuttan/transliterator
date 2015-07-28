@@ -1,6 +1,6 @@
 from multiprocessing import Pool
 import multiprocessing
-import random, functools
+import functools
 import itertools as it
 
 from cfilt.transliteration.decoder import *
@@ -9,9 +9,9 @@ from cfilt.transliteration.utilities import *
 decoder=None
 
 # initializer
-def initdecoder(translit_model,lm_model):
+def initdecoder(translit_model,lm_model,decoder_params={}):
     global decoder
-    decoder=TransliterationDecoder(translit_model,lm_model)
+    decoder=TransliterationDecoder(translit_model,lm_model,decoder_params)
 
 # task functions 
 def task_decode(src):
@@ -21,11 +21,11 @@ def task_loglikelihood_unsupervised(wpair):
     return decoder.compute_log_likelihood_unsupervised([wpair])
 
 # Convenience functions for parallel decoding
-def parallel_decode(translit_model,lm_model,word_list,
+def parallel_decode(translit_model,lm_model,word_list, decoder_params={},
                      n_processes=None,
                    ): 
 
-    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model]) 
+    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model,decoder_params]) 
 
     output=pool.map(task_decode,word_list)
     pool.close()
@@ -34,11 +34,11 @@ def parallel_decode(translit_model,lm_model,word_list,
     return output
 
 # Convenience functions for parallel decoding
-def parallel_likelihood_unsupervised(translit_model,lm_model,word_pair_list,
+def parallel_likelihood_unsupervised(translit_model,lm_order,word_pair_list, decoder_params={},
                      n_processes=None,
                    ): 
 
-    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model]) 
+    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model,decoder_params]) 
 
     wll_list=pool.map(task_loglikelihood_unsupervised,word_pair_list)
     pool.close()
@@ -46,13 +46,13 @@ def parallel_likelihood_unsupervised(translit_model,lm_model,word_pair_list,
 
     return sum(wll_list)
 
-def parallel_evaluate(translit_model,lm_model,word_pairs,
+def parallel_evaluate(translit_model,lm_model,lm_order,word_pairs,decoder_params={},
                      n_processes=None
                      ): 
 
     f_input_words=[ w[0] for w in word_pairs ]
 
-    best_outputs=parallel_decode(translit_model,lm_model,f_input_words,
+    best_outputs=parallel_decode(translit_model,lm_model,f_input_words, decoder_params,
                      n_processes,
                      ) 
     for (f_input_word, e_output_word), best_output  in it.izip(word_pairs, best_outputs): 
@@ -65,11 +65,11 @@ def task_decode_topn(char_list,topn):
     return decoder.decode_topn(char_list, topn)
 
 # Convenience functions for parallel decoding
-def parallel_decode_topn(translit_model,lm_model,word_list, topn,
+def parallel_decode_topn(translit_model,lm_model, lm_order, word_list, topn, decoder_params={},
                      n_processes=None,
                      ): 
 
-    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model]) 
+    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model,decoder_params]) 
 
     p_task_decode_topn =  functools.partial(task_decode_topn,topn=topn)
     output=pool.map(p_task_decode_topn,word_list)

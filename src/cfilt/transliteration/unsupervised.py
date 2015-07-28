@@ -1,14 +1,9 @@
 import itertools as it
-import codecs, sys, pickle, os
-import pprint 
+import pickle, os
 from collections import defaultdict
 import numpy as np, math
-import pandas as pd
 import random
-import yaml 
 import copy
-
-import srilm
 
 from cfilt.transliteration.decoder import *
 from cfilt.transliteration.parallel_decoder import *
@@ -41,7 +36,7 @@ from indicnlp import langinfo
     
 class UnsupervisedTransliteratorTrainer: 
 
-    def __init__(self, config_params, lm_model=None):
+    def __init__(self, config_params):
         
         ############ load config file 
         self._config=config_params
@@ -72,9 +67,6 @@ class UnsupervisedTransliteratorTrainer:
         # Parameter values in the previous iteration 
         self.prev_param_values=None
 
-        ############# Language model 
-        self._lm_model=lm_model
-
         #############  Hyper parameters 
         # initialize hyper parameters 
         # Each of the P(f|e) distributions is governed by a Dirichlet Prior alpha[e,f] for each value for e and f
@@ -98,46 +90,6 @@ class UnsupervisedTransliteratorTrainer:
                 raise Exception('No initialization method specified')
         
             self._initmethod,self._initparams=config_params['initialization'].iteritems().next()
-
-#    def print_obj(self): 
-#
-#        print("xxx Printing EM instance xxx")
-#        print("Symbol mappings for F: ")
-#        for f_id in range(len(self._translit_model.f_id_sym_map)): 
-#            print u'{} {}'.format(f_id,self._translit_model.f_id_sym_map[f_id]).encode('utf-8')
-#
-#        print("Symbol mappings for E: ")
-#        for e_id in range(len(self._translit_model.e_id_sym_map)): 
-#            print u'{} {}'.format(e_id,self._translit_model.e_id_sym_map[e_id]).encode('utf-8')
-#
-#        #print("Param Occurence Info: ")
-#        #for eid in xrange(len(self._translit_model.e_sym_id_map)): 
-#        #    for fid in xrange(len(self._translit_model.f_sym_id_map)): 
-#        #        l=self.param_occurence_info[eid][fid]
-#        #        if len(l)>0:
-#        #            print 'eid={} fid={}'.format(eid,fid)
-#        #            pprint.pprint(l)
-#
-#        #print("Alignments: ")
-#        ## gather transliteration occurrence info
-#        #for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-#        #    for aln_idx,align in enumerate(alignments): 
-#        #        print 'wp_idx={} aln_idx={}'.format(wp_idx,aln_idx)
-#        #        pprint.pprint(align)
-#        #        #for charseq_pair in align: 
-#        #        #    print[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
-#
-#    def print_params(self): 
-#        #print("Alignment Weights: ")
-#        #pprint.pprint(self.wpairs_weights)
-#       
-#        print("Transliteration Probabilities")
-#        #for e_id in range(len(self._translit_model.e_sym_id_map)): 
-#        #    for f_id in range(len(self._translit_model.f_sym_id_map)): 
-#        #        #print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
-#        #        print u"P({}|{})={}".format(f_id,e_id,self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
-#        #pprint.pprint(self._translit_model.param_values)
-        
 
     def _generate_alignments(self,f_word,e_word):
         """
@@ -670,10 +622,11 @@ class UnsupervisedTransliteratorTrainer:
                 for es_id, fs_id in align: 
                     self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
     
-    def em_unsupervised_train(self,f_input_words,e_char_set): 
+    def em_unsupervised_train(self,f_input_words,e_char_set,lm_model): 
         """
         """
         print "Initializing unsupervised learning" 
+        decoder_params=self._config.get('decoder_params',{})
         topn=5
         self._initialize_unsupervised_training(f_input_words,e_char_set)
 
@@ -692,7 +645,7 @@ class UnsupervisedTransliteratorTrainer:
             ### >>> Simple 1-best candidate based training (1)
             print "Parallel Decoding for EM"
             prev_outputs=output_words if output_words is not None else ['']*len(f_input_words)
-            output_words=parallel_decode(self._translit_model, self._lm_model, f_input_words)
+            output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
             word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
             print "Preparing corpus"
@@ -702,7 +655,7 @@ class UnsupervisedTransliteratorTrainer:
             #### >>> top-k candidate based training (without updating alignment probabilities ie not using e-step)
             #print "Parallel Decoding for EM"
             #prev_outputs=output_words if output_words is not None else [ [ ('',1.0/float(topn))  ]*topn ]*len(f_input_words)
-            #output_words=parallel_decode_topn(self._translit_model, self._lm_model, f_input_words, topn)
+            #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, topn, decoder_params)
             #output_words=[ self._normalize_topn_scores(x) for x in output_words]
             #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
