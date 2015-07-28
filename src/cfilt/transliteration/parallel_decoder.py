@@ -34,7 +34,7 @@ def parallel_decode(translit_model,lm_model,word_list, decoder_params={},
     return output
 
 # Convenience functions for parallel decoding
-def parallel_likelihood_unsupervised(translit_model,lm_order,word_pair_list, decoder_params={},
+def parallel_likelihood_unsupervised(translit_model, word_pair_list, decoder_params={},
                      n_processes=None,
                    ): 
 
@@ -46,7 +46,7 @@ def parallel_likelihood_unsupervised(translit_model,lm_order,word_pair_list, dec
 
     return sum(wll_list)
 
-def parallel_evaluate(translit_model,lm_model,lm_order,word_pairs,decoder_params={},
+def parallel_evaluate(translit_model,lm_model,word_pairs,decoder_params={},
                      n_processes=None
                      ): 
 
@@ -65,11 +65,11 @@ def task_decode_topn(char_list,topn):
     return decoder.decode_topn(char_list, topn)
 
 # Convenience functions for parallel decoding
-def parallel_decode_topn(translit_model,lm_model, lm_order, word_list, topn, decoder_params={},
+def parallel_decode_topn(translit_model, lm_model, word_list, topn, decoder_params={},
                      n_processes=None,
                      ): 
 
-    pool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model,decoder_params]) 
+    ool = Pool(processes=n_processes,initializer=initdecoder,initargs=[translit_model,lm_model,decoder_params]) 
 
     p_task_decode_topn =  functools.partial(task_decode_topn,topn=topn)
     output=pool.map(p_task_decode_topn,word_list)

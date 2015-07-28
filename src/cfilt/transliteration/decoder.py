@@ -67,6 +67,8 @@ class TransliterationModel:
         with open(translit_model_fname,'w') as translit_model_file: 
             pickle.dump(model_obj,translit_model_file)
 
+    NULL_CHAR=u'`' # have used the backquotes character, which is unlikely to be found in text
+
     def __init__(self):
 
         self.f_sym_id_map={}
@@ -76,7 +78,7 @@ class TransliterationModel:
         self.e_id_sym_map={}
 
         # This is a dummy symbol to denote a null symbol in an n-gram - for representation of k-grams k<n, the order of the LM
-        self.add_e_sym(u'null')
+        self.add_e_sym(TransliterationModel.NULL_CHAR)
 
         # Dictionary of parameter values (point alignment) to its probability
         self.param_values={}

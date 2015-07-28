@@ -39,7 +39,7 @@ def transliterate(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, 
 
     write_monolingual_corpus(ecorpus_fname,output)
 
-def transliterate_topn(translit_model_fname, lm_fname, lm_order, fcorpus_fname, ecorpus_fname, topn,  decoder_config_fname=None, n_processes=None):
+def transliterate_topn(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, topn,  decoder_config_fname=None, n_processes=None):
 
     decoder_params={}
     if decoder_config_fname is not None: 
@@ -65,7 +65,7 @@ def transliterate_topn(translit_model_fname, lm_fname, lm_order, fcorpus_fname, 
                 ofile.write( u'{} ||| {} ||| {} ||| {}\n'.format( i, u' '.join(candidate), u' ', score  ) )
 
 
-def log_likelihood_unsupervised(translit_model_fname, lm_fname, lm_order, fcorpus_fname, ecorpus_fname, decoder_config_fname=None, n_processes=None):
+def log_likelihood_unsupervised(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fname, decoder_config_fname=None, n_processes=None):
 
     decoder_params={}
     if decoder_config_fname is not None: 
