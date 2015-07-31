@@ -59,6 +59,12 @@ def transliterate_topn(translit_model_fname, lm_fname, fcorpus_fname, ecorpus_fn
                                 n_processes
                               )
 
+    #decoder=TransliterationDecoder(TransliterationModel.load_translit_model(translit_model_fname), 
+    #                            load_lm_model(lm_fname,lm_order),
+    #                            decoder_params
+    #                          )
+    #output= [ decoder.decode_topn_ngram(x,topn) for x in  read_monolingual_corpus(fcorpus_fname)  ]
+
     with codecs.open(ecorpus_fname,'w','utf-8') as ofile: 
         for i, ocand_list in enumerate(output): 
             for candidate, score in ocand_list: 

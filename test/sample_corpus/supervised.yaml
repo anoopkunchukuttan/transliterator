@@ -4,9 +4,9 @@ train_iteration: 100
 # convergence criteria for EM. Each parameter value should be with the tolerance limit wrt previous iteration     
 conv_epsilon: 0.005
 
-## decoder params 
-#decoder_params: 
-#    lm_order: 2
+# decoder params 
+decoder_params: 
+    lm_order: 2
 
 # allowed mapping, target to source     
 allowed_mappings: 

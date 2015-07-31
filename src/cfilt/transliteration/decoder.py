@@ -103,8 +103,10 @@ class TransliterationDecoder:
         self._lm_order=params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER)
         self._translit_model=translit_model
 
-        e_vocabsize=len(self._translit_model.e_id_sym_map)
-        self._lm_cache=np.ones(  ( int(np.power(e_vocabsize,self._lm_order-1)), e_vocabsize )  )*-1.0
+        self._esize=len(self._translit_model.e_id_sym_map)
+        self._lm_cache=np.ones(  ( int(np.power(self._esize,self._lm_order-1)), self._esize )  )*-1.0
+
+        self._lm_cache_ngram={}
 
     def _bigram_score(self,hist_id,cur_id):
         """
@@ -119,11 +121,13 @@ class TransliterationDecoder:
     def _word_log_score(self,word):
         return srilm.getSentenceProb(self._lm_model,u' '.join(word).encode('utf-8'),len(word))
 
+    #@profile
     def _get_param_value( self, e_id, f_input_chars, stretch=3.0 ): 
         if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
             return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],stretch)
         else:
             return 0.0
+        #return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],stretch)
 
     #@profile
     def decode(self,f_input_word): 
@@ -386,7 +390,8 @@ class TransliterationDecoder:
 
         return (u' '.join(context_v), len(context_v))
 
-    def _ngram_score(self,hist_list,cur_id):
+    #@profile
+    def _ngram_score(self,hist_id,hist_list,cur_id):
         """
         Generate n-gram probability score
 
@@ -395,12 +400,16 @@ class TransliterationDecoder:
 
         cur_id: id of the current symbol. 
        """
-        ngram, len_ngram=self._generate_ngram(hist_list,cur_id)
-        #if self._lm_cache[ngram]==-1:
-        #    self._lm_cache[ngram]=math.pow( 10 , srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram) )
+        ngram_id=hist_id*self._esize+cur_id
 
-        #return self._lm_cache[ngram]
-        return math.pow( 10 , srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram) )
+        if ngram_id not in self._lm_cache_ngram:
+            ngram, len_ngram=self._generate_ngram(hist_list,cur_id)
+            self._lm_cache_ngram[ngram_id]=math.pow( 10 ,
+                                srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram) )
+
+        return self._lm_cache_ngram[ngram_id]
+
+        #return math.pow( 10 , srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram) )
 
     def _backtrack_nbest_output_ngram(self,max_row_matrix,max_char_matrix,max_nbest_matrix,j,k,n): 
         """
@@ -451,17 +460,16 @@ class TransliterationDecoder:
         Generate a list representation from index representation of state
         List is empty is k is not a valid state. This happens for: 
             - k=0
-            - any k where base(e_size) representation has '0' sandwiched between other word ids
+            - any k where base(self._esize) representation has '0' sandwiched between other word ids
 
         """
-        e_size=len(self._translit_model.e_sym_id_map.keys())
 
         l=[]
         null_encountered=False
 
         while k>0: 
             # get LSB
-            d=k%e_size
+            d=k%self._esize
 
             # check if valid state: invalid if '0' is sandwiched between other ids
             if d==0:
@@ -471,7 +479,7 @@ class TransliterationDecoder:
 
             l.append(d)
 
-            k=k/e_size 
+            k=k/self._esize 
 
         
         return filter(lambda x:x!=0,reversed(l))            
@@ -481,21 +489,22 @@ class TransliterationDecoder:
         Using Horner's rule 
         Input has to be a valid state
         """
-        e_size=len(self._translit_model.e_sym_id_map.keys())
 
         k=0
         for i in k_list[:-1]:
-            k+=i*e_size
+            k+=i*self._esize
         return k+k_list[-1]
+
+    def _generate_string_representation(self,k_list): 
+        return ' '.join( [str(x) for x in k_list] )
 
     def _generate_all_states(self): 
         """
         Generate all valid states 
         """
-        e_size=len(self._translit_model.e_sym_id_map.keys())
         context_size=self._lm_order-1
 
-        for k in xrange(int(np.power(e_size,context_size))):
+        for k in xrange(int(np.power(self._esize,context_size))):
             k_list=self._generate_list_representation_if_valid(k)
 
             if len(k_list)>0:
@@ -503,23 +512,22 @@ class TransliterationDecoder:
 
     def _generate_related_history(self,k,k_list): 
         context_size=self._lm_order-1
-        e_size=len(self._translit_model.e_sym_id_map.keys())
 
         rel_his=[k_list[:-1]]
         if len(k_list)==context_size: 
-            rel_his.extend([ [c]+rel_his[0]  for c in xrange(1,e_size)])
+            rel_his.extend([ [c]+rel_his[0]  for c in xrange(1,self._esize)])
 
         return ( ( self._generate_index_representation(x), x) for x in rel_his if len(x)>0)
-            
+
+    #@profile
     def decode_topn_ngram(self,f_input_word,topn=1):
         """
             decoding with an ngram language model 
         """
 
-        e_size=len(self._translit_model.e_sym_id_map.keys())
         context_size=self._lm_order-1
 
-        sm_shape=(len(f_input_word), int(np.power(e_size,context_size)), topn )
+        sm_shape=(len(f_input_word), int(np.power(self._esize,context_size)), topn )
 
         # score matrix
         ## initializing to 1.0, which denotes an invalid entry. Useful for keeping track of length of n-best list
@@ -535,10 +543,10 @@ class TransliterationDecoder:
             if len(k_list)==1:
                 score_matrix[0,k,0]= sum ( map ( log_z  ,
                                       #    LM score                    translition matrix score
-                                   [ self._ngram_score([],k_list[-1]) , self._get_param_value(  k , f_input_word[0]) ] 
+                                   [ self._ngram_score(0,[],k_list[-1]) , self._get_param_value(  k , f_input_word[0]) ] 
                              ) 
                            )
-                #print 'Candidates for {} {}: {}'.format(0,k,score_matrix[0,k,0])
+        #        print 'Candidates for {}, {}: {}'.format(0,self._generate_string_representation(k_list),score_matrix[0,k,0])
 
         ### modified  viterbi decoding
         # j- input position
@@ -551,19 +559,19 @@ class TransliterationDecoder:
         for j in xrange(1,sm_shape[0]):
             #print 'Input posn: {}'.format(j)
             for k, k_list in self._generate_all_states():
-                #print 'Cur Char: {}'.format(k)
+                #print 'Cur Char: {}'.format(self._generate_string_representation(k_list))
 
                 entry_scores=[]
 
                 ## Case 1: A new output character is generated by input(j) alone
                 for m, m_list in self._generate_related_history(k,k_list):
-                    #print 'Prev Char: {}'.format(m)
+                    #print 'Prev Char: {}'.format(self._generate_string_representation(m_list))
                     for n in xrange(sm_shape[2]):  # for the first input candidate, only consider 1 candidate from initialization
                         if score_matrix[j-1,m,n]>0.0:
                             break
                         v=score_matrix[j-1,m,n] + sum ( map ( log_z ,
-                                   # LM score                    transliteration matrix score
-                                   [ self._ngram_score(m_list,k_list[-1]) , self._get_param_value(  k_list[-1] , f_input_word[j] )  ] 
+                                   [ self._ngram_score(m,m_list,k_list[-1]) ,  # LM score                  
+                                     self._get_param_value(  k_list[-1] , f_input_word[j] )  ]  # transliteration matrix score
                              ) 
                            )  
                         entry_scores.append( ( ( j-1, m, n )  , v  ) )
@@ -574,7 +582,7 @@ class TransliterationDecoder:
                     ## first 2 input characters generate the first output
                     v=sum ( map ( log_z ,
                                # LM score                    transliteration matrix score
-                               [ self._ngram_score([],k_list[-1]) , self._get_param_value(  k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] 
+                               [ self._ngram_score(0,[],k_list[-1]) , self._get_param_value(  k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] 
                          ) 
                        )  
                     entry_scores.append( ( ( -1, -1, -1 )  , v  ) )
@@ -584,26 +592,29 @@ class TransliterationDecoder:
                 if j>=2:
                     # evaluate all (j-2) candidates
                     for m, m_list in self._generate_related_history(k,k_list):
-                        #print 'Prev Char: {}'.format(m)
+                        #print 'Prev Char: {}'.format(self._generate_string_representation(m_list))
                         for n in xrange(sm_shape[2]):
                             if score_matrix[j-2,m,n]>0.0:
                                 break
                             v=score_matrix[j-2,m,n] +  sum ( map ( log_z ,
-                                       # LM score                    transliteration matrix score
-                                       [ self._ngram_score(m_list,k_list[-1]) , self._get_param_value( k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] 
+                                       [ self._ngram_score(m,m_list,k_list[-1]) ,     # LM score                 
+                                           self._get_param_value( k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] #   transliteration matrix score
                                  ) 
                                )  
 
                             entry_scores.append( ( ( j-2, m, n )  , v  ) )
 
                 top_n_candidates=heapq.nlargest(topn,entry_scores,key=operator.itemgetter(1))
-                #print 'Candidates for {} {}:'.format(j,k)
+                #print 'Candidates for {}, {}:'.format(j,self._generate_string_representation(k_list))
                 for n in xrange(len(top_n_candidates)): 
                     score_matrix[j,k,n]=top_n_candidates[n][1]
                     max_row_matrix[j,k,n]=top_n_candidates[n][0][0]
                     max_char_matrix[j,k,n]=top_n_candidates[n][0][1]
                     max_nbest_matrix[j,k,n]=top_n_candidates[n][0][2]
-                    #print '{} {} {}: {}'.format(top_n_candidates[n][0][0],top_n_candidates[n][0][1],top_n_candidates[n][0][2],top_n_candidates[n][1])
+                    #print '{}, {}, {}: {}'.format(top_n_candidates[n][0][0],
+                    #                        self._generate_string_representation(self._generate_list_representation_if_valid(top_n_candidates[n][0][1])),
+                    #                        top_n_candidates[n][0][2],
+                    #                        top_n_candidates[n][1])
 
         # find starting points for backtracking top-n outputs 
         def generate_final_candidates():
@@ -763,212 +774,4 @@ class TransliterationDecoder:
             i=i+1
 
         return ll             
-
-    #def _generate_ngram(self,hist_id,cur_id,hist_len): 
-    #    """
-    #    Generates ngram corresponding to provided history/context and the current symbol 
-
-    #    hist_id: the id of the historical state. For a state-space with k symbols and history window of n, this is number between 0 and k^^n. 
-    #             This can be interpreted as an n-digit number in base-k notation. This interpretation is used in the computations that follow. 
-    #             hist_id=-1 is invalid/no history. Equivalent condition: hist_len=0
-
-    #    cur_id: id of the current symbol. integer between 0 and k(exclusive)
-
-    #    hist_len: length of the history indicated by hist_id. This information is required to identify histories less than length n. 
-    #              For such candidates, only the 'hist_len' LSB radix-k digits are used to generate history/context 
-
-    #    """
-    #    e_size=len(self._translit_model.e_sym_id_map.keys())
-    #    context_size=self._lm_order-1
-
-    #    # initialize with current char id
-    #    context_v=[self._translit_model.e_id_sym_map[cur_id]]
-
-    #    # identify all characters from history
-    #    if hist_len>0:
-    #        v=hist_id
-    #        l=0
-    #        while v>0 or l<hist_len: 
-    #            context_v.append(self._translit_model.e_id_sym_map[v%e_size])
-    #            v=v/e_size
-    #            l=l+1
-
-    #    # for context less than ngram_order-1, choose only available context and add start of sentence marker
-    #    if hist_len<context_size: 
-    #        #context_v=context_v[:hist_len+1]
-    #        context_v.append(u'<s>')
-
-    #    return u' '.join( reversed(context_v) )
-
-    #def _ngram_score(self,hist_id,cur_id,hist_len):
-    #    """
-    #    Generate n-gram probability score
-
-    #    hist_id: the id of the historical state. For a state-space with k symbols and history window of n, this is number between 0 and k^^n. 
-    #             This can be interpreted as an n-digit number in base-k notation. This interpretation is used in the computations that follow. 
-    #             hist_id=-1 is invalid/no history. Equivalent condition: hist_len=0
-
-    #    cur_id: id of the current symbol. integer between 0 and k(exclusive)
-
-    #    hist_len: length of the history indicated by hist_id. This information is required to identify histories less than length n. 
-    #              For such candidates, only the 'hist_len' LSB radix-k digits are used to generate history/context 
-    #    """
-    #    if self._lm_cache[hist_id,cur_id]==-1:
-    #        ngram=_generate_ngram(hist_id,cur_id)
-    #        self._lm_cache[hist_id,cur_id]=math.pow( 10 , srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),self._lm_order) )
-    #   ##                                                                                                              ??           
-
-    #    return self._lm_cache[hist_id,cur_id]
-
-    #def _backtrack_nbest_output_ngram(self,max_row_matrix,max_char_matrix,max_nbest_matrix,sol_length_matrix,j,k,n,sl): 
-    #    """
-    #    Finds the best output, ending with the character identified by the triplet (j,k,n), where: 
-
-    #    j: index position of source character
-    #    k: ending state/output sequence - k 
-    #    n: nth best candidates for history/state k
-
-    #    The length of the output is 'sl' 
-    #
-    #    The following datastructures are used to backtrack through the decoder generated trellis
-
-    #    max_row_matrix: 
-    #    max_char_matrix: 
-    #    max_nbest_matrix:  
-    #    sol_length_matrix: 
-
-    #    """
-    #    e_size=len(self._translit_model.e_sym_id_map.keys())
-    #    context_size=self._lm_order-1
-
-    #    decoded_output=[]
-
-    #    #### Initialize
-    #    # Extract the last (order-2) or sl characters, whichever is less
-    #    cur_j, cur_k, cur_n, cur_len = j, k, n, sl
-
-    #    v=cur_k 
-    #    l=cur_len
-    #    while v>e_size and l>0: 
-    #        ## first condition ensures that radix-(order-1) MSB is not extracted
-
-    #        decoded_output.append(self._translit_model.e_id_sym_map[v%e_size])
-    #        v=v/e_size
-    #        l-=1
-
-
-    #    ### Extract the remaining characters by extracting MSB from each of the states in the backtracking path
-    #    while cur_len>=context_size:
-    #        #print u'{} {} {} {}'.format(cur_j,cur_k, cur_n, self._translit_model.e_id_sym_map[cur_k]).encode('utf-8')
-    #        ch=cur_k/int(np.pow(e_size,context_size-1))
-    #        decoded_output.append( self._translit_model.e_id_sym_map[ch] )
-
-    #        cur_j, cur_k, cur_n, cur_len = [   
-    #                max_row_matrix[cur_j,cur_k,cur_n],
-    #                max_char_matrix[cur_j,cur_k,cur_n], 
-    #                max_nbest_matrix[cur_j,cur_k,cur_n], 
-    #                sol_length_matrix[cur_j,cur_k,cur_n],
-    #            ]                
-
-    #    return list(reversed(decoded_output))
-
-    #def decode_topn_ngram(self,f_input_word,topn=1):
-    #    """
-    #        decoding with an ngram language model 
-    #    """
-
-    #    e_size=len(self._translit_model.e_sym_id_map.keys())
-    #    context_size=self._lm_order-1
-    #    sm_shape=(len(f_input_word), int(np.pow(e_size,context_size)), topn )
-
-    #    # score matrix
-    #    score_matrix=np.zeros( sm_shape ) 
-    #    # backtracking matrices 
-    #    max_row_matrix=np.zeros( sm_shape ,dtype=int ) 
-    #    max_char_matrix=np.zeros( sm_shape,dtype=int ) 
-    #    max_nbest_matrix=np.zeros( sm_shape,dtype=int ) 
-    #    # matrix to keep track of output sequence length. used to keep track of what history to use
-    #    sol_length_matrix=np.zeros( sm_shape,dtype=int ) 
-
-    #    # initialization
-    #    for k in xrange(sm_shape[1]):
-    #        #print 'Candidates for {} {}:'.format(0,k)
-    #        for n in xrange(sm_shape[2]):
-    #            #print u'{} {}'.format( self._translit_model.e_id_sym_map[k] ,self._bigram_score(-1,k)).encode('utf-8')
-    #            #print u'{} {} {}'.format( self._translit_model.e_id_sym_map[k] , f_input_word[0], self._get_param_value(  k , f_input_word[0])).encode('utf-8')
-    #            max_row_matrix[0,k,n]=-1                       
-    #            max_char_matrix[0,k,n]=-1                       
-    #            max_nbest_matrix[0,k,n]=-1
-    #            sol_length_matrix[0,k,n]=1
-    #            score_matrix[0,k,n]= sum ( map ( log_z  ,
-    #                                  #    LM score                    translition matrix score
-    #                               [ self._ngram_score(-1,k,0) , self._get_param_value(  k , f_input_word[0]) ] 
-    #                         ) 
-    #                       )
-
-    #    ### modified  viterbi decoding
-    #    # j- input position
-    #    # k- output history id (current)
-    #    # m- output history id (prev)
-
-
-    #    # Compute the scoring matrix and create the backtracking vector 
-
-    #    for j in xrange(1,sm_shape[0]):
-    #        #print 'Row: {}'.format(j)
-    #        for k in xrange(sm_shape[1]):
-    #            ##print 'Char: {}'.format(k)
-
-    #            entry_scores=[]
-    #            context_first=k/e_size
-    #            cur_char_id=k%e_size
-
-    #            ## Case 1: A new output character is generated by input(j) alone
-    #            for m in xrange(context_first,sm_shape[1],int(sm_shape[1]/e_size)):
-    #                for n in xrange(  sm_shape[2]  if j>1 else 1  ):  # for the first input candidate, only consider 1 candidate from initialization
-    #                    v=score_matrix[j-1,m,n] + sum ( map ( log_z ,
-    #                               # LM score                    transliteration matrix score
-    #                               [ self._ngram_score(m,k,sol_length_matrix[j-1,m,n]) , self._get_param_value(  cur_char_id , f_input_word[j] )  ] 
-    #                         ) 
-    #                       )  
-    #                    entry_scores.append( ( ( j-1, m, n )  , v  ) )
-
-
-    #            # Case 2: A new output character is generated by input(j) and input(j-1)
-    #            if j>=2:
-    #                # evaluate all (j-2) candidates
-    #                for m in xrange(context_first,sm_shape[1],sm_shape[1]/e_size):
-    #                    for n in xrange(sm_shape[2] if j>2 else 1):
-    #                        v=score_matrix[j-2,m,n] +  sum ( map ( log_z ,
-    #                                   # LM score                    transliteration matrix score
-    #                                   [ self._ngram_score(m,k,sol_length_matrix[j-2,m,n]) , self._get_param_value(  cur_char_id ,  f_input_word[j-1] +  f_input_word[j]) ] 
-    #                             ) 
-    #                           )  
-
-    #                        entry_scores.append( ( ( j-2, m, n )  , v  ) )
-
-    #            top_n_candidates=heapq.nlargest(topn,entry_scores,key=operator.itemgetter(1))
-    #            #print 'Candidates for {} {}:'.format(j,k)
-    #            for n in xrange(len(top_n_candidates)): 
-    #                score_matrix[j,k,n]=top_n_candidates[n][1]
-    #                max_row_matrix[j,k,n]=top_n_candidates[n][0][0]
-    #                max_char_matrix[j,k,n]=top_n_candidates[n][0][1]
-    #                max_nbest_matrix[j,k,n]=top_n_candidates[n][0][2]
-    #                sol_length_matrix[j,k,n]=sol_length_matrix[ max_row_matrix[j,k,n], max_char_matrix[j,k,n], max_nbest_matrix[j,k,n] ] + 1
-    #                #print '({} {} {} {})'.format(score_matrix[j,k,n],max_row_matrix[j,k,n],max_char_matrix[j,k,n],max_nbest_matrix[j,k,n])
-
-    #    # find starting points for backtracking top-n outputs 
-    #    final_top_n_candidates=heapq.nlargest(topn,
-    #            it.product([sm_shape[0]-1],xrange(sm_shape[1]),xrange(sm_shape[2])),
-    #            key=lambda ia: score_matrix[ ia[0], ia[1], ia[2] ] )
-
-    #    nbest_list= [
-    #                    (
-    #                        self._backtrack_ngram_nbest_output(max_row_matrix,max_char_matrix,max_nbest_matrix,*candidate),
-    #                        score_matrix[candidate[0], candidate[1], candidate[2]]
-    #                    )    for candidate in final_top_n_candidates 
-
-    #                ]                             
-
-    #    return nbest_list
 
