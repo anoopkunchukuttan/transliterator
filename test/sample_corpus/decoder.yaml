@@ -1,2 +1,5 @@
 # Markov order of the language model 
-lm_order: 3
+lm_order: 2
+
+# exponent power to stretch  the transliteration/channel probabilties
+prob_stretch_power: 3.0

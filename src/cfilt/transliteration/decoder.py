@@ -96,16 +96,24 @@ class TransliterationModel:
 class TransliterationDecoder: 
 
     DEFAULT_LM_ORDER=2
+    DEFAULT_PROB_STRETCH_POWER=1.0
 
     def __init__(self,translit_model, lm_model, params={}): 
 
-        self._lm_model=lm_model
-        self._lm_order=params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER)
+        # input    
         self._translit_model=translit_model
+        self._lm_model=lm_model
+
+        # decoder parameters 
+        self._lm_order=params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER)
+        self._stretch =params.get('prob_stretch_power',TransliterationDecoder.DEFAULT_PROB_STRETCH_POWER)
 
         self._esize=len(self._translit_model.e_id_sym_map)
+
+        # bigram cache
         self._lm_cache=np.ones(  ( int(np.power(self._esize,self._lm_order-1)), self._esize )  )*-1.0
 
+        # ngram cache 
         self._lm_cache_ngram={}
 
     def _bigram_score(self,hist_id,cur_id):
@@ -122,9 +130,9 @@ class TransliterationDecoder:
         return srilm.getSentenceProb(self._lm_model,u' '.join(word).encode('utf-8'),len(word))
 
     #@profile
-    def _get_param_value( self, e_id, f_input_chars, stretch=3.0 ): 
+    def _get_param_value( self, e_id, f_input_chars):
         if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
-            return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],stretch)
+            return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],self._stretch)
         else:
             return 0.0
         #return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],stretch)

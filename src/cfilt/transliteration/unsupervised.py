@@ -601,17 +601,17 @@ class UnsupervisedTransliteratorTrainer:
 
             ### >>> Simple 1-best candidate based training (1)
 
-            #print "Parallel Decoding for EM"
-            #prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
-            #output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
-            #output_words=[ [(x,1.0)] for x in output_words ]
-            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
-
             print "Parallel Decoding for EM"
             prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
-            output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 1, decoder_params)
-            output_words=[ self._normalize_topn_scores(x) for x in output_words]
+            output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
+            output_words=[ [(x,1.0)] for x in output_words ]
             word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+
+            #print "Parallel Decoding for EM"
+            #prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
+            #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 1, decoder_params)
+            #output_words=[ self._normalize_topn_scores(x) for x in output_words]
+            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
             print "Preparing corpus"
             self._prepare_corpus_unsupervised(word_triplets,append)
