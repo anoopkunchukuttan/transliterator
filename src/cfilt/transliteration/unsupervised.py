@@ -460,36 +460,16 @@ class UnsupervisedTransliteratorTrainer:
                                             np.ones((self._alpha.shape[0],n_new_f_chars))  ),
                                         axis=1)
 
-    #def _prepare_corpus_unsupervised(self,word_triplets, append=True): 
-    #    """
-    #       Does not reuse weights from previous iteration
-    #    """
-    #    self.wpairs_aligns=[]
-    #    self.wpairs_weights=[]
-    #
-    #    for f,e_cands,e_prev_cands in word_triplets: 
-    #        e, escore=e_cands[0]
-    #        alignments=self._generate_alignments(f,e)
-    #        if len(alignments)>0:
-    #            self.wpairs_aligns.append(alignments)
-    #            self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
-    #        else: 
-    #            print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
-
-    #    self.wpairs_eword_weights=[1.0]*len(self.wpairs_aligns)
-
-    #    self.param_occurence_info=defaultdict(lambda :defaultdict(list))
-   
-    #    # gather transliteration occurrence info
-    #    for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-    #        for aln_idx,align in enumerate(alignments): 
-    #            for es_id, fs_id in align: 
-    #                self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
-    
     def _prepare_corpus_unsupervised(self,word_triplets,append): 
         """
            reuses weights from previous iteration
         """
+       
+        ## NOTE: Uncomment this block if alignment weights should not be reused across iterations 
+        #self.wpairs_aligns=[]
+        #self.wpairs_weights=[]
+        #append=True
+
         if append:
             for widx, (f,e_cands,e_prev_cands) in enumerate(word_triplets): 
                 e, escore=e_cands[0]
