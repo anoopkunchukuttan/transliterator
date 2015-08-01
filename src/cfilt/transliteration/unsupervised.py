@@ -169,7 +169,7 @@ class UnsupervisedTransliteratorTrainer:
 
     def _generate_en_indic_hyperparams(self,params):
 
-        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))*params['scale_factor_mapping_exists']
 
         ## get mapping rules 
         mapping_rules=filter_by_val_len(remove_constraints(en_il_rules))
@@ -185,7 +185,6 @@ class UnsupervisedTransliteratorTrainer:
                 for f_sym_x in mapping_rules[offset]:
                     if f_sym_x in self._translit_model.f_sym_id_map: 
                         alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=params['base_measure_mapping_exists']
-                        alpha[e_id,:]*=params['scale_factor_mapping_exists']
 
         return alpha
 
@@ -215,7 +214,7 @@ class UnsupervisedTransliteratorTrainer:
         #                self._translit_model.add_f_sym(f_with_halant)
 
         ## initialize hyperparams 
-        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))*params['scale_factor_mapping_exists']
 
         for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
             offset= langinfo.get_offset(e_sym,tgt)
@@ -236,8 +235,6 @@ class UnsupervisedTransliteratorTrainer:
                         f_with_halant=f_sym_x+langinfo.offset_to_char(0x4d,src)
                         if f_with_halant in self._translit_model.f_sym_id_map: 
                             alpha[e_id,self._translit_model.f_sym_id_map[f_with_halant]]=params['base_measure_mapping_exists']
-
-                    alpha[e_id,:]*=params['scale_factor_mapping_exists']
 
         return alpha 
 
@@ -465,10 +462,10 @@ class UnsupervisedTransliteratorTrainer:
            reuses weights from previous iteration
         """
        
-        ## NOTE: Uncomment this block if alignment weights should not be reused across iterations 
-        #self.wpairs_aligns=[]
-        #self.wpairs_weights=[]
-        #append=True
+        # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
+        self.wpairs_aligns=[]
+        self.wpairs_weights=[]
+        append=True
 
         if append:
             for widx, (f,e_cands,e_prev_cands) in enumerate(word_triplets): 
