@@ -133,6 +133,7 @@ class UnsupervisedTransliteratorTrainer:
                 # create 'e' sym to id mapping
                 # TODO: check if this works correctly in the unsupervised case
                 if es not in self._translit_model.e_sym_id_map: 
+                    print u'Warning: unkown e symbol found: {}'.format(es)
                     self._translit_model.add_e_sym(es)
                 es_id=  self._translit_model.e_sym_id_map[es] 
 

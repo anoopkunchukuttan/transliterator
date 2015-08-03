@@ -110,21 +110,15 @@ class TransliterationDecoder:
 
         self._esize=len(self._translit_model.e_id_sym_map)
 
+        ### local cache for speedup
         # bigram cache
         self._lm_cache=np.ones(  ( int(np.power(self._esize,self._lm_order-1)), self._esize )  )*-1.0
 
         # ngram cache 
         self._lm_cache_ngram={}
 
-    def _bigram_score(self,hist_id,cur_id):
-        """
-        """
-        if self._lm_cache[hist_id,cur_id]==-1:
-            bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
-                                    self._translit_model.e_id_sym_map[cur_id])
-            self._lm_cache[hist_id,cur_id]=math.pow( 10 , srilm.getBigramProb(self._lm_model,bigram.encode('utf-8')) )
-
-        return self._lm_cache[hist_id,cur_id]
+        # transliteration probabilities pre-processed: log and cubing 
+        self._param_values=self._stretch*numpy_log_z(self._translit_model.param_values)
 
     def _word_log_score(self,word):
         return srilm.getSentenceProb(self._lm_model,u' '.join(word).encode('utf-8'),len(word))
@@ -132,10 +126,29 @@ class TransliterationDecoder:
     #@profile
     def _get_param_value( self, e_id, f_input_chars):
         if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
-            return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],self._stretch)
-        else:
-            return 0.0
-        #return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],stretch)
+            return self._param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ]
+        else: 
+            return log_z(0.0)
+
+    def _bigram_log_score(self,hist_id,cur_id):
+        """
+        """
+        if self._lm_cache[hist_id,cur_id]==-1:
+            bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
+                                    self._translit_model.e_id_sym_map[cur_id])
+            self._lm_cache[hist_id,cur_id]=srilm.getBigramProb(self._lm_model,bigram.encode('utf-8'))/LOG_E_BASE10
+
+        return self._lm_cache[hist_id,cur_id]
+
+    #def _bigram_score(self,hist_id,cur_id):
+    #    """
+    #    """
+    #    if self._lm_cache[hist_id,cur_id]==-1:
+    #        bigram=u'{} {}'.format( self._translit_model.e_id_sym_map[hist_id] if hist_id>=0 else u'<s>',
+    #                                self._translit_model.e_id_sym_map[cur_id])
+    #        self._lm_cache[hist_id,cur_id]=math.pow( 10 , srilm.getBigramProb(self._lm_model,bigram.encode('utf-8')) )
+
+    #    return self._lm_cache[hist_id,cur_id]
 
     #@profile
     def decode(self,f_input_word): 
@@ -158,11 +171,8 @@ class TransliterationDecoder:
             # for first input character generating first output character
             max_row_matrix[0,k]=-1                       
             max_char_matrix[0,k]=-1                       
-            score_matrix[0,k]= sum ( map ( log_z  ,
                                   #    LM score                    translition matrix score
-                               [ self._bigram_score(-1,k) , self._get_param_value(  k , f_input_word[0]) ] 
-                         ) 
-                       )
+            score_matrix[0,k]= self._bigram_log_score(-1,k) + self._get_param_value(  k , f_input_word[0]) 
             #print 'Candidates for {} {}: {}'.format(0,k,score_matrix[0,k])
 
         ### modified  viterbi decoding
@@ -184,11 +194,8 @@ class TransliterationDecoder:
                 # evaluate all (j-1) candidates
                 for m in xrange(np.shape(score_matrix)[1]):
                     #print 'Prev Char: {}'.format(m)
-                    v=score_matrix[j-1,m] + sum ( map ( log_z ,
-                               # LM score                    transliteration matrix score
-                               [ self._bigram_score(m,k) , self._get_param_value(  k , f_input_word[j] )  ] 
-                         ) 
-                       )  
+                    #                               LM score                    transliteration matrix score
+                    v=score_matrix[j-1,m] + self._bigram_log_score(m,k)  + self._get_param_value(  k , f_input_word[j] )  
                             
                     if v>max_val_1:
                         max_val_1=v
@@ -202,21 +209,15 @@ class TransliterationDecoder:
                 
                 if j==1:
                     ## first 2 input characters generate the first output
-                    max_val_2=sum ( map ( log_z ,
-                               # LM score                    transliteration matrix score
-                               [ self._bigram_score(-1,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
-                         ) 
-                       )  
+                                    # LM score                    transliteration matrix score
+                    max_val_2=self._bigram_log_score(-1,k) +  self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j])  
 
                 if j>=2:
                     # evaluate all (j-2) candidates
                     for m in xrange(np.shape(score_matrix)[1]):
                         #print 'Prev Char: {}'.format(m)
-                        v=score_matrix[j-2,m] +  sum ( map ( log_z ,
                                    # LM score                    transliteration matrix score
-                                   [ self._bigram_score(m,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
-                             ) 
-                           )  
+                        v=score_matrix[j-2,m] + self._bigram_log_score(m,k) + self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j])  
 
                         if v>max_val_2:
                             max_val_2=v
@@ -253,6 +254,130 @@ class TransliterationDecoder:
 
         return list(reversed(decoded_output))
  
+    ##@profile
+    #def _get_param_value( self, e_id, f_input_chars):
+    #    if self._translit_model.f_sym_id_map.has_key(f_input_chars): 
+    #        return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],self._stretch)
+    #    else:
+    #        return 0.0
+    #    #return np.power(self._translit_model.param_values[  e_id , self._translit_model.f_sym_id_map[f_input_chars] ],stretch)
+
+    ##@profile
+    #def decode(self,f_input_word): 
+    #    """
+    #        bigram language model 
+    #    """
+
+    #    sm_shape=(len(f_input_word), len(self._translit_model.e_sym_id_map.keys()) )
+
+    #    # score matrix
+    #    score_matrix=np.zeros( sm_shape ) 
+    #    # backtracking matrices 
+    #    max_row_matrix=np.zeros( sm_shape ,dtype=int ) 
+    #    max_char_matrix=np.zeros( sm_shape,dtype=int ) 
+
+    #    # initialization
+    #    #print 'Initialization'
+    #    for k in xrange(sm_shape[1]):
+
+    #        # for first input character generating first output character
+    #        max_row_matrix[0,k]=-1                       
+    #        max_char_matrix[0,k]=-1                       
+    #        score_matrix[0,k]= sum ( map ( log_z  ,
+    #                              #    LM score                    translition matrix score
+    #                           [ self._bigram_score(-1,k) , self._get_param_value(  k , f_input_word[0]) ] 
+    #                     ) 
+    #                   )
+    #        #print 'Candidates for {} {}: {}'.format(0,k,score_matrix[0,k])
+
+    #    ### modified  viterbi decoding
+    #    # j- input position
+    #    # k- output char id (current)
+    #    # m- output char id (prev)
+
+
+    #    # Compute the scoring matrix and create the backtracking vector 
+
+    #    for j in xrange(1,np.shape(score_matrix)[0]):
+    #        #print 'Input: {}'.format(j)
+    #        for k in xrange(np.shape(score_matrix)[1]):
+    #            #print 'Cur Char: {}'.format(k)
+    #            # Case 1: A new output character is generated by input(j) alone
+    #            max_val_1=float('-inf')
+    #            max_char_1=-1
+
+    #            # evaluate all (j-1) candidates
+    #            for m in xrange(np.shape(score_matrix)[1]):
+    #                #print 'Prev Char: {}'.format(m)
+    #                v=score_matrix[j-1,m] + sum ( map ( log_z ,
+    #                           # LM score                    transliteration matrix score
+    #                           [ self._bigram_score(m,k) , self._get_param_value(  k , f_input_word[j] )  ] 
+    #                     ) 
+    #                   )  
+    #                        
+    #                if v>max_val_1:
+    #                    max_val_1=v
+    #                    max_char_1=m
+    #                    #print '({} {})'.format(max_val_1,max_char_1)
+    #                    #print 'DDD: {} {} {}'.format( score_matrix[j-1,m] , self._bigram_score(m,k) , self._get_param_value(  k , f_input_word[j] )  ) 
+    #                     
+    #            # Case 2: A new output character is generated by input(j) and input(j-1)
+    #            max_val_2=float('-inf')
+    #            max_char_2=-1
+    #            
+    #            if j==1:
+    #                ## first 2 input characters generate the first output
+    #                max_val_2=sum ( map ( log_z ,
+    #                           # LM score                    transliteration matrix score
+    #                           [ self._bigram_score(-1,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
+    #                     ) 
+    #                   )  
+
+    #            if j>=2:
+    #                # evaluate all (j-2) candidates
+    #                for m in xrange(np.shape(score_matrix)[1]):
+    #                    #print 'Prev Char: {}'.format(m)
+    #                    v=score_matrix[j-2,m] +  sum ( map ( log_z ,
+    #                               # LM score                    transliteration matrix score
+    #                               [ self._bigram_score(m,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
+    #                         ) 
+    #                       )  
+
+    #                    if v>max_val_2:
+    #                        max_val_2=v
+    #                        max_char_2=m
+    #                        #print '({} {})'.format(max_val_2,max_char_2)
+    #                        #print 'DDD: {} {} {}'.format( score_matrix[j-2,m] , self._bigram_score(m,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j])  ) 
+
+    #            # Max of Case 1 and Case 2
+    #            #print 'Candidates for {} {}:'.format(j,k)
+    #            #print '{} {}'.format(j-1,max_char_1)
+    #            #print '{} {}'.format(j-2,max_char_2)
+    #            if max_val_2 > max_val_1 : 
+    #                score_matrix[j,k] = max_val_2
+    #                max_row_matrix[j,k] = j-2
+    #                max_char_matrix[j,k] = max_char_2
+    #            else: 
+    #                score_matrix[j,k] = max_val_1
+    #                max_row_matrix[j,k] = j-1
+    #                max_char_matrix[j,k] = max_char_1
+
+    #    # Backtrack and compute the best output sequence
+    #    decoded_output=[]
+
+    #    cur_j=sm_shape[0]-1
+    #    cur_k=np.argmax(score_matrix[cur_j,:])
+
+    #    while cur_j>=0:
+    #        #print u'{} {} {}'.format(cur_j,cur_k,self._translit_model.e_id_sym_map[cur_k]).encode('utf-8')
+    #        decoded_output.append( self._translit_model.e_id_sym_map[cur_k] )
+    #        new_j=max_row_matrix[cur_j,cur_k]
+    #        new_k=max_char_matrix[cur_j,cur_k] 
+    #        cur_j= new_j
+    #        cur_k = new_k
+
+    #    return list(reversed(decoded_output))
+ 
     def evaluate(self,word_pairs):
         for f_input_word, e_output_word in word_pairs: 
             print u'Input: {}'.format(''.join(f_input_word)).encode('utf-8')
@@ -279,7 +404,6 @@ class TransliterationDecoder:
 
         return list(reversed(decoded_output))
 
-
     def decode_topn(self,f_input_word,topn=1): 
         """
             bigram language model 
@@ -301,11 +425,8 @@ class TransliterationDecoder:
                 max_row_matrix[0,k,n]=-1                       
                 max_char_matrix[0,k,n]=-1                       
                 max_nbest_matrix[0,k,n]=-1
-                score_matrix[0,k,n]= sum ( map ( log_z  ,
                                       #    LM score                    translition matrix score
-                                   [ self._bigram_score(-1,k) , self._get_param_value(  k , f_input_word[0]) ] 
-                             ) 
-                           )
+                score_matrix[0,k,n]= self._bigram_log_score(-1,k) + self._get_param_value(  k , f_input_word[0]) 
             #print 'Candidates for {} {}: {}'.format(0,k,score_matrix[0,k,0])
 
         ### modified  viterbi decoding
@@ -327,22 +448,16 @@ class TransliterationDecoder:
                 for m in xrange(np.shape(score_matrix)[1]):
                     #print 'Prev Char: {}'.format(m)
                     for n in xrange(  np.shape(score_matrix)[2]  if j>1 else 1  ):  # for the first input candidate, only consider 1 candidate from initialization
-                        v=score_matrix[j-1,m,n] + sum ( map ( log_z ,
                                    # LM score                    transliteration matrix score
-                                   [ self._bigram_score(m,k) , self._get_param_value(  k , f_input_word[j] )  ] 
-                             ) 
-                           )  
+                        v=score_matrix[j-1,m,n] + self._bigram_log_score(m,k) + self._get_param_value(  k , f_input_word[j] )
                         entry_scores.append( ( ( j-1, m, n )  , v  ) )
 
 
                 # Case 2: A new output character is generated by input(j) and input(j-1)
                 if j==1: 
                     ## first 2 input characters generate the first output
-                    v=sum ( map ( log_z ,
                                # LM score                    transliteration matrix score
-                               [ self._bigram_score(-1,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
-                         ) 
-                       )  
+                    v= self._bigram_log_score(-1,k)  + self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j])  
                     entry_scores.append( ( ( -1, -1, -1 )  , v  ) )
 
                 if j>=2:
@@ -350,11 +465,8 @@ class TransliterationDecoder:
                     for m in xrange(np.shape(score_matrix)[1]):
                         #print 'Prev Char: {}'.format(m)
                         for n in xrange(np.shape(score_matrix)[2] if j>2 else 1):
-                            v=score_matrix[j-2,m,n] +  sum ( map ( log_z ,
-                                       # LM score                    transliteration matrix score
-                                       [ self._bigram_score(m,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
-                                 ) 
-                               )  
+                                    # LM score                    transliteration matrix score
+                            v=score_matrix[j-2,m,n] +  self._bigram_log_score(m,k) + self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) 
                             entry_scores.append( ( ( j-2, m, n )  , v  ) )
 
                 top_n_candidates=heapq.nlargest(topn,entry_scores,key=operator.itemgetter(1))
@@ -381,6 +493,108 @@ class TransliterationDecoder:
 
         return nbest_list
 
+
+    #def decode_topn(self,f_input_word,topn=1): 
+    #    """
+    #        bigram language model 
+    #    """
+
+    #    sm_shape=(len(f_input_word), len(self._translit_model.e_sym_id_map.keys()), topn )
+
+    #    # score matrix
+    #    score_matrix=np.zeros( sm_shape ) 
+    #    # backtracking matrices 
+    #    max_row_matrix=np.zeros( sm_shape ,dtype=int ) 
+    #    max_char_matrix=np.zeros( sm_shape,dtype=int ) 
+    #    max_nbest_matrix=np.zeros( sm_shape,dtype=int ) 
+
+    #    # initialization
+    #    #print 'Initialization'
+    #    for k in xrange(sm_shape[1]):
+    #        for n in xrange(sm_shape[2]):
+    #            max_row_matrix[0,k,n]=-1                       
+    #            max_char_matrix[0,k,n]=-1                       
+    #            max_nbest_matrix[0,k,n]=-1
+    #            score_matrix[0,k,n]= sum ( map ( log_z  ,
+    #                                  #    LM score                    translition matrix score
+    #                               [ self._bigram_score(-1,k) , self._get_param_value(  k , f_input_word[0]) ] 
+    #                         ) 
+    #                       )
+    #        #print 'Candidates for {} {}: {}'.format(0,k,score_matrix[0,k,0])
+
+    #    ### modified  viterbi decoding
+    #    # j- input position
+    #    # k- output char id (current)
+    #    # m- output char id (prev)
+
+
+    #    # Compute the scoring matrix and create the backtracking vector 
+
+    #    for j in xrange(1,np.shape(score_matrix)[0]):
+    #        #print 'Input posn: {}'.format(j)
+    #        for k in xrange(np.shape(score_matrix)[1]):
+    #            #print 'Cur Char: {}'.format(k)
+
+    #            entry_scores=[]
+
+    #            ## Case 1: A new output character is generated by input(j) alone
+    #            for m in xrange(np.shape(score_matrix)[1]):
+    #                #print 'Prev Char: {}'.format(m)
+    #                for n in xrange(  np.shape(score_matrix)[2]  if j>1 else 1  ):  # for the first input candidate, only consider 1 candidate from initialization
+    #                    v=score_matrix[j-1,m,n] + sum ( map ( log_z ,
+    #                               # LM score                    transliteration matrix score
+    #                               [ self._bigram_score(m,k) , self._get_param_value(  k , f_input_word[j] )  ] 
+    #                         ) 
+    #                       )  
+    #                    entry_scores.append( ( ( j-1, m, n )  , v  ) )
+
+
+    #            # Case 2: A new output character is generated by input(j) and input(j-1)
+    #            if j==1: 
+    #                ## first 2 input characters generate the first output
+    #                v=sum ( map ( log_z ,
+    #                           # LM score                    transliteration matrix score
+    #                           [ self._bigram_score(-1,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
+    #                     ) 
+    #                   )  
+    #                entry_scores.append( ( ( -1, -1, -1 )  , v  ) )
+
+    #            if j>=2:
+    #                # evaluate all (j-2) candidates
+    #                for m in xrange(np.shape(score_matrix)[1]):
+    #                    #print 'Prev Char: {}'.format(m)
+    #                    for n in xrange(np.shape(score_matrix)[2] if j>2 else 1):
+    #                        v=score_matrix[j-2,m,n] +  sum ( map ( log_z ,
+    #                                   # LM score                    transliteration matrix score
+    #                                   [ self._bigram_score(m,k) , self._get_param_value(  k ,  f_input_word[j-1] +  f_input_word[j]) ] 
+    #                             ) 
+    #                           )  
+    #                        entry_scores.append( ( ( j-2, m, n )  , v  ) )
+
+    #            top_n_candidates=heapq.nlargest(topn,entry_scores,key=operator.itemgetter(1))
+    #            #print 'Candidates for {} {}:'.format(j,k)
+    #            for n in xrange(len(top_n_candidates)): 
+    #                score_matrix[j,k,n]=top_n_candidates[n][1]
+    #                max_row_matrix[j,k,n]=top_n_candidates[n][0][0]
+    #                max_char_matrix[j,k,n]=top_n_candidates[n][0][1]
+    #                max_nbest_matrix[j,k,n]=top_n_candidates[n][0][2]
+    #                #print '{} {} {}: {}'.format(top_n_candidates[n][0][0],top_n_candidates[n][0][1],top_n_candidates[n][0][2],top_n_candidates[n][1])
+
+    #    # find starting points for backtracking top-n outputs 
+    #    final_top_n_candidates=heapq.nlargest(topn,
+    #            it.product([sm_shape[0]-1],xrange(sm_shape[1]),xrange(sm_shape[2])),
+    #            key=lambda ia: score_matrix[ ia[0], ia[1], ia[2] ] )
+
+    #    nbest_list= [
+    #                    (
+    #                        self._backtrack_nbest_output(max_row_matrix,max_char_matrix,max_nbest_matrix,*candidate),
+    #                        score_matrix[candidate[0], candidate[1], candidate[2]]
+    #                    )    for candidate in final_top_n_candidates 
+
+    #                ]                             
+
+    #    return nbest_list
+
     def _generate_ngram(self,hist_list,cur_id): 
         """
         Generates ngram corresponding to provided history/context and the current symbol 
@@ -401,7 +615,7 @@ class TransliterationDecoder:
         return (u' '.join(context_v), len(context_v))
 
     #@profile
-    def _ngram_score(self,hist_id,hist_list,cur_id):
+    def _ngram_log_score(self,hist_id,hist_list,cur_id):
         """
         Generate n-gram probability score
 
@@ -414,12 +628,9 @@ class TransliterationDecoder:
 
         if ngram_id not in self._lm_cache_ngram:
             ngram, len_ngram=self._generate_ngram(hist_list,cur_id)
-            self._lm_cache_ngram[ngram_id]=math.pow( 10 ,
-                                srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram) )
+            self._lm_cache_ngram[ngram_id]= srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram)/LOG_E_BASE10 
 
         return self._lm_cache_ngram[ngram_id]
-
-        #return math.pow( 10 , srilm.getNgramProb(self._lm_model,ngram.encode('utf-8'),len_ngram) )
 
     def _backtrack_nbest_output_ngram(self,max_row_matrix,max_char_matrix,max_nbest_matrix,j,k,n): 
         """
@@ -450,7 +661,7 @@ class TransliterationDecoder:
         decoded_output.extend([self._translit_model.e_id_sym_map[x] for x in reversed(cur_k_list[1:])])
         
         if len(cur_k_list)<context_size:
-            decoded_output.append(cur_k_list[0])
+            decoded_output.append(self._translit_model.e_id_sym_map[cur_k_list[0]])
 
         ### Extract the remaining characters by extracting MSB from each of the states in the backtracking path
         while len(cur_k_list)==context_size:
@@ -551,11 +762,8 @@ class TransliterationDecoder:
         #print 'Initialization'
         for k, k_list in self._generate_all_states():
             if len(k_list)==1:
-                score_matrix[0,k,0]= sum ( map ( log_z  ,
                                       #    LM score                    translition matrix score
-                                   [ self._ngram_score(0,[],k_list[-1]) , self._get_param_value(  k , f_input_word[0]) ] 
-                             ) 
-                           )
+                score_matrix[0,k,0]=self._ngram_log_score(0,[],k_list[-1]) + self._get_param_value(  k , f_input_word[0])   
         #        print 'Candidates for {}, {}: {}'.format(0,self._generate_string_representation(k_list),score_matrix[0,k,0])
 
         ### modified  viterbi decoding
@@ -579,22 +787,15 @@ class TransliterationDecoder:
                     for n in xrange(sm_shape[2]):  # for the first input candidate, only consider 1 candidate from initialization
                         if score_matrix[j-1,m,n]>0.0:
                             break
-                        v=score_matrix[j-1,m,n] + sum ( map ( log_z ,
-                                   [ self._ngram_score(m,m_list,k_list[-1]) ,  # LM score                  
-                                     self._get_param_value(  k_list[-1] , f_input_word[j] )  ]  # transliteration matrix score
-                             ) 
-                           )  
+                        v=score_matrix[j-1,m,n] + self._ngram_log_score(m,m_list,k_list[-1]) + self._get_param_value(  k_list[-1] , f_input_word[j] )
                         entry_scores.append( ( ( j-1, m, n )  , v  ) )
 
 
                 #Case 2: A new output character is generated by input(j) and input(j-1)
                 if j==1 and len(k_list)==1: 
                     ## first 2 input characters generate the first output
-                    v=sum ( map ( log_z ,
-                               # LM score                    transliteration matrix score
-                               [ self._ngram_score(0,[],k_list[-1]) , self._get_param_value(  k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] 
-                         ) 
-                       )  
+                    v= self._ngram_log_score(0,[],k_list[-1]) + self._get_param_value(  k_list[-1] ,  f_input_word[j-1] +  f_input_word[j])  
+                         
                     entry_scores.append( ( ( -1, -1, -1 )  , v  ) )
                 
                 #print '=='
@@ -606,11 +807,9 @@ class TransliterationDecoder:
                         for n in xrange(sm_shape[2]):
                             if score_matrix[j-2,m,n]>0.0:
                                 break
-                            v=score_matrix[j-2,m,n] +  sum ( map ( log_z ,
-                                       [ self._ngram_score(m,m_list,k_list[-1]) ,     # LM score                 
-                                           self._get_param_value( k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) ] #   transliteration matrix score
-                                 ) 
-                               )  
+                            v=score_matrix[j-2,m,n] + \
+                                        self._ngram_log_score(m,m_list,k_list[-1]) + \
+                                           self._get_param_value( k_list[-1] ,  f_input_word[j-1] +  f_input_word[j]) 
 
                             entry_scores.append( ( ( j-2, m, n )  , v  ) )
 
@@ -648,8 +847,6 @@ class TransliterationDecoder:
                     ]                             
 
         return nbest_list
-
-
 
     ### Compute likelihood for 
     def _generate_alignments(self,f_word,e_word):
