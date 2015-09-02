@@ -7,7 +7,9 @@ conv_epsilon: 0.005
 # decoder params 
 decoder_params: 
     lm_order: 2
-    prob_stretch_power: 3.0 
+    prob_stretch_power: 1.0 
+    length_control_add: 0.0
+    max_beam_prune_size: 50
 
 # allowed mapping, target to source     
 allowed_mappings: 
@@ -34,8 +36,8 @@ initialization:
     
     ## based on rule based mapping for English to Indic scripts 
     en_il_mapping:
-         scale_factor_mapping_exists: 10.0
-         base_measure_mapping_exists: 1000.0    
+         scale_factor_mapping_exists: 0.01
+         base_measure_mapping_exists: 100.0    
          upper_case:     
          src: en
          tgt: hi
@@ -60,8 +62,8 @@ prior_config:
     
     ## based on rule based mapping for English to Indic scripts 
     en_il_mapping:
-         scale_factor_mapping_exists: 10.0
-         base_measure_mapping_exists: 1000.0    
+         scale_factor_mapping_exists: 0.01
+         base_measure_mapping_exists: 100.0    
          src: en
          tgt: hi
          

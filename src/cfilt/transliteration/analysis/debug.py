@@ -1,11 +1,16 @@
 from cfilt.transliteration.decoder import *
 from cfilt.transliteration.parallel_decoder import *
 from cfilt.transliteration.utilities import *
+from indicnlp.transliterate import unicode_transliterate
 
 import os, scipy
 import numpy as np 
 import sys
 import itertools as it
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+
 
 def read_lines(corpus_fname): 
     with codecs.open(corpus_fname,'r','utf-8') as infile:
@@ -26,7 +31,7 @@ def read_transliterations(log_dir,itern):
     else: 
         with open(triplets_fname,'r') as infile: 
             triplets=pickle.load(infile)
-            transliterations=[ tgt for src,tgt,prev in triplets]
+            transliterations=[ tgt[0][0] for src,tgt,prev in triplets]
 
     return transliterations 
 
@@ -119,6 +124,49 @@ def likelihood_generator(log_dir,
 #    bitvec=[len(f)>=len(e) for f, e in it.izip(read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/parallel/pb/bn-hi/train.bn'),read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/parallel/pb/bn-hi/train.hi' ))]
 #    print sum(bitvec) 
 
+
+def plot_confusion_matrix(confusion_mat_fname,tgt='hi'): 
+
+    confusion_df=pd.read_pickle(confusion_mat_fname)
+    
+    schar=list(confusion_df.index)
+    tchar=list(confusion_df.columns)
+    i=0
+    for c in schar: 
+        if c in tchar: 
+            confusion_df.ix[c,c]=0.0
+    
+    data=confusion_df.as_matrix()
+    
+    # # normalize along row
+    # sums=np.sum(data,axis=1)
+    # data=data.T/sums
+    # data=data.T
+    
+    # # normalize along column
+    # sums=np.sum(data,axis=0)
+    # data=data/sums
+    
+    s=np.sum(data)
+    data=data/s
+    
+    columns=list(confusion_df.columns)
+    col_names=[ x if tgt=='hi' else unicode_transliterate.UnicodeIndicTransliterator.transliterate(x,lcode_map[tgt],'hi') for x in columns]
+
+    rows=list(confusion_df.index)
+    row_names=[ x if tgt=='hi' else unicode_transliterate.UnicodeIndicTransliterator.transliterate(x,lcode_map[tgt],'hi') for x in rows]
+    
+    #plt.pcolor(data,cmap=plt.cm.gray_r,edgecolors='k')
+    plt.pcolor(data,cmap=plt.cm.hot_r,edgecolors='k')
+    
+    #plt.pcolor(data,edgecolors='k')
+    plt.colorbar()
+    plt.xticks(np.arange(0,len(col_names))+0.5,col_names)
+    plt.yticks(np.arange(0,len(row_names))+0.5,row_names)
+    
+    plt.show()
+    plt.close()
+
 def debug_training(log_dir): 
    #print list(av_entropy_generator(log_dir))
    #equal_sentences()
@@ -128,6 +176,5 @@ def debug_training(log_dir):
    pass 
 
 if __name__=='__main__': 
-   #debug_training(sys.argv[1]) 
-   #equal_sentences()
-   pass 
+    plot_confusion_matrix(sys.argv[1])
+    pass 
