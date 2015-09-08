@@ -12,6 +12,9 @@ from cfilt.transliteration.char_mappings import *
 
 from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTransliterator 
 from indicnlp import langinfo 
+from indicnlp.script import indic_scripts
+
+from cfilt.transliteration import phonetic_sim 
 
 # Alignment is a list of 'charseq_pairs'
 # represented as 'src_seq|tgtseq'
@@ -239,6 +242,36 @@ class UnsupervisedTransliteratorTrainer:
 
         return alpha 
 
+    def _generate_indic_phonetic_hyperparams(self,params):
+
+        src=params['src']
+        tgt=params['tgt']
+
+        ## initialize hyperparams 
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+
+        for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
+            tgt_v=indic_scripts.get_phonetic_feature_vector(e_sym,tgt)
+
+            for f_id, f_sym in self._translit_model.f_id_sym_map.iteritems(): 
+                src_v=None
+                if len(f_sym)==1: 
+                    # single character  (1-1 mappings)
+                    src_v=indic_scripts.get_phonetic_feature_vector(f_sym,src)
+                else: 
+                    # 2 characters (1-2 mappings)
+                    src_v_0=indic_scripts.get_phonetic_feature_vector(f_sym[0],src)
+                    src_v_1=indic_scripts.get_phonetic_feature_vector(f_sym[1],src)
+                    src_v=phonetic_sim.accumulate_vectors(src_v_0,src_v_1)
+
+                alpha[e_id,f_id]=phonetic_sim.sim1(src_v,tgt_v)
+
+            alpha_sums=np.sum(alpha, axis=1)
+            alpha=(alpha.transpose()/alpha_sums).transpose()
+            alpha*=params['scale_factor']
+                            
+        return alpha 
+
     def _init_param_values(self):
 
         if  not hasattr(self,'_initmethod') or self._initmethod=='random':
@@ -257,6 +290,11 @@ class UnsupervisedTransliteratorTrainer:
 
         elif  self._initmethod=='indic_mapping':
             alpha=self._generate_indic_hyperparams(self._initparams)
+            alpha_sums=np.sum(alpha, axis=1)
+            self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
+
+        elif  self._initmethod=='indic_phonetic_mapping':
+            alpha=self._generate_indic_phonetic_hyperparams(self._initparams)
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
 
@@ -283,6 +321,9 @@ class UnsupervisedTransliteratorTrainer:
 
             elif self._priormethod=='indic_mapping':
                 self._alpha=self._generate_indic_hyperparams(self._priorparams)
+
+            elif self._priormethod=='indic_phonetic_mapping':
+                self._alpha=self._generate_indic_phonetic_hyperparams(self._priorparams)
 
             elif  self._initmethod=='en_il_mapping':
                 self._alpha=self._generate_en_indic_hyperparams(self._priorparams)

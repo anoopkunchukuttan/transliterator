@@ -34,6 +34,13 @@ initialization:
     #     src: pa
     #     tgt: hi
     
+    ### based on phonetic mapping for Indic scripts 
+    #indic_phonetic_mapping:
+    #     scale_factor_mapping_exists: 10.0
+    #     #similarity_function: 
+    #     src: pa
+    #     tgt: hi
+    
     ## based on rule based mapping for English to Indic scripts 
     en_il_mapping:
          scale_factor_mapping_exists: 0.01

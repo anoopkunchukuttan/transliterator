@@ -127,6 +127,8 @@ def likelihood_generator(log_dir,
 
 def plot_confusion_matrix(confusion_mat_fname,tgt='hi'): 
 
+    matplotlibcfont.rcParams['font.family']='Lohit Devanagari'
+
     confusion_df=pd.read_pickle(confusion_mat_fname)
     
     schar=list(confusion_df.index)
