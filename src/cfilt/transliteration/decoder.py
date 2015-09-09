@@ -594,7 +594,6 @@ class TransliterationDecoder:
             else: 
                 top_beam_candidates=current_hypotheses
 
-            pprint.pprint(top_beam_candidates) 
             hypothesis_collection.append(top_beam_candidates)
 
         print 'Find best candidates' 
