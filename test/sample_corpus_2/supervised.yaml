@@ -1,0 +1,91 @@
+## number of EM training iterations 
+train_iteration: 100 
+
+# convergence criteria for EM. Each parameter value should be with the tolerance limit wrt previous iteration     
+conv_epsilon: 0.005
+
+# decoder params 
+decoder_params: 
+    lm_order: 2
+    prob_stretch_power: 1.0 
+    length_control_add: 0.0
+    max_beam_prune_size: 50
+
+# allowed mapping, target to source     
+allowed_mappings: 
+    - 1 
+    - 2 
+
+## EM parameter initialization
+# Optional
+# one of random/dirichlet/uniform
+# defaults to random
+# if 'dirichlet' is specified, then 'prior_config' key must be present and the appropriate method defined
+initialization: 
+    ### random prior 
+    #random: 
+    # scale: 1.0
+    ### uniform 
+    #uniform: 
+    ### based on rule based mapping for Indic scripts 
+    indic_mapping:
+         scale_factor_mapping_exists: 10.0
+         base_measure_mapping_exists: 1000.0    
+         src: bn
+         tgt: hi
+    
+    ### based on phonetic mapping for Indic scripts 
+    #indic_phonetic_mapping:
+    #     scale_factor_mapping_exists: 10.0
+    #     #similarity_function: 
+    #     src: bn
+    #     tgt: hi
+    
+    ### based on rule based mapping for English to Indic scripts 
+    #en_il_mapping:
+    #     scale_factor_mapping_exists: 0.01
+    #     base_measure_mapping_exists: 100.0    
+    #     upper_case:     
+    #     src: en
+    #     tgt: hi
+    
+
+## Dirichlet prior for transliteration probabilities     
+# Optional
+# prior config can take one of the following values for key(method): random/zero/indic_mapping. 
+# If 'prior_config' is specified, then the method and specs must be listed
+
+prior_config: 
+    ### random prior 
+    #random: 
+    # scale: 1.0
+
+    ## based on rule based mapping for Indic scripts 
+    indic_mapping:
+         scale_factor_mapping_exists: 10.0
+         base_measure_mapping_exists: 1000.0    
+         src: bn
+         tgt: hi
+    
+    ### based on phonetic mapping for Indic scripts 
+    #indic_phonetic_mapping:
+    #     scale_factor_mapping_exists: 10.0
+    #     #similarity_function: 
+    #     src: bn
+    #     tgt: hi
+    
+    ### based on rule based mapping for English to Indic scripts 
+    #en_il_mapping:
+    #     scale_factor_mapping_exists: 0.01
+    #     base_measure_mapping_exists: 100.0    
+    #     src: en
+    #     tgt: hi
+         
+    ### add one smooting
+    #add_one_smoothing:
+
+##  The debug log directory
+## Optional
+## No log generated if this key is absent 
+log_dir: /home/development/anoop/experiments/unsupervised_transliterator/src/transliterator/test/sample_workspace2/log
+        

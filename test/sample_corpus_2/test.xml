@@ -1,0 +1,513 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    
+    <TransliterationCorpus 
+        CorpusFormat="UTF-8" 
+        CorpusID="sample" 
+        CorpusSize="100" 
+        CorpusType="Dev" 
+        NameSource="Mixed" 
+    	SourceLang = "bn"
+    	TargetLang = "hi">
+
+<Name ID="1">
+<SourceName>মাতলা</SourceName>
+<TargetName ID="1">फरदीन</TargetName>
+</Name>
+
+<Name ID="2">
+<SourceName>জয়বল</SourceName>
+<TargetName ID="1">धनानी</TargetName>
+</Name>
+
+<Name ID="3">
+<SourceName>সন্থোমে</SourceName>
+<TargetName ID="1">आनंदित</TargetName>
+</Name>
+
+<Name ID="4">
+<SourceName>সংক্রান্থি</SourceName>
+<TargetName ID="1">चाल्लोनर</TargetName>
+</Name>
+
+<Name ID="5">
+<SourceName>কোনীলি</SourceName>
+<TargetName ID="1">योक्षीथा</TargetName>
+</Name>
+
+<Name ID="6">
+<SourceName>কামনা</SourceName>
+<TargetName ID="1">सिथालादेवी</TargetName>
+</Name>
+
+<Name ID="7">
+<SourceName>কৌশানী</SourceName>
+<TargetName ID="1">रजब</TargetName>
+</Name>
+
+<Name ID="8">
+<SourceName>সুবাসিনী</SourceName>
+<TargetName ID="1">गदीन</TargetName>
+</Name>
+
+<Name ID="9">
+<SourceName>যাইলিয়ন্বলা</SourceName>
+<TargetName ID="1">वसिलाह</TargetName>
+</Name>
+
+<Name ID="10">
+<SourceName>ইসমাইল</SourceName>
+<TargetName ID="1">अप्प्रोव</TargetName>
+</Name>
+
+<Name ID="11">
+<SourceName>হামলি</SourceName>
+<TargetName ID="1">योकी</TargetName>
+</Name>
+
+<Name ID="12">
+<SourceName>জোশিমাথ</SourceName>
+<TargetName ID="1">हाइटावर</TargetName>
+</Name>
+
+<Name ID="13">
+<SourceName>সলিগয়ো</SourceName>
+<TargetName ID="1">शालू</TargetName>
+</Name>
+
+<Name ID="14">
+<SourceName>অগ্দম</SourceName>
+<TargetName ID="1">कम्बोह</TargetName>
+</Name>
+
+<Name ID="15">
+<SourceName>জোড়াসাঁকো</SourceName>
+<TargetName ID="1">डांस</TargetName>
+</Name>
+
+<Name ID="16">
+<SourceName>তিঘের</SourceName>
+<TargetName ID="1">नहिद</TargetName>
+</Name>
+
+<Name ID="17">
+<SourceName>ঘানেম</SourceName>
+<TargetName ID="1">मुल्तान</TargetName>
+</Name>
+
+<Name ID="18">
+<SourceName>ওদিতী</SourceName>
+<TargetName ID="1">मालिनी</TargetName>
+</Name>
+
+<Name ID="19">
+<SourceName>শাহারীকা</SourceName>
+<TargetName ID="1">प्रहार्षा</TargetName>
+</Name>
+
+<Name ID="20">
+<SourceName>ঢিবি</SourceName>
+<TargetName ID="1">मेहिथ</TargetName>
+</Name>
+
+<Name ID="21">
+<SourceName>জযচংদ</SourceName>
+<TargetName ID="1">सकलानी</TargetName>
+</Name>
+
+<Name ID="22">
+<SourceName>এডুকাতর</SourceName>
+<TargetName ID="1">माल्लीका</TargetName>
+</Name>
+
+<Name ID="23">
+<SourceName>ফর্মাগুদি</SourceName>
+<TargetName ID="1">शेनंडे</TargetName>
+</Name>
+
+<Name ID="24">
+<SourceName>উপ্পদ</SourceName>
+<TargetName ID="1">टिम्बर</TargetName>
+</Name>
+
+<Name ID="25">
+<SourceName>বৈন</SourceName>
+<TargetName ID="1">डायान</TargetName>
+</Name>
+
+<Name ID="26">
+<SourceName>বোয়তস</SourceName>
+<TargetName ID="1">सन्खुवासभा</TargetName>
+</Name>
+
+<Name ID="27">
+<SourceName>হংসিন</SourceName>
+<TargetName ID="1">डाइटरी</TargetName>
+</Name>
+
+<Name ID="28">
+<SourceName>গোদ্দা</SourceName>
+<TargetName ID="1">मुन्नेश्वर</TargetName>
+</Name>
+
+<Name ID="29">
+<SourceName>চুন্নী</SourceName>
+<TargetName ID="1">बकतावर</TargetName>
+</Name>
+
+<Name ID="30">
+<SourceName>আমোদ</SourceName>
+<TargetName ID="1">आचमन</TargetName>
+</Name>
+
+<Name ID="31">
+<SourceName>সাত্সাঙ্গা</SourceName>
+<TargetName ID="1">भुर्जी</TargetName>
+</Name>
+
+<Name ID="32">
+<SourceName>হর্শাগুন</SourceName>
+<TargetName ID="1">खी</TargetName>
+</Name>
+
+<Name ID="33">
+<SourceName>কাতজা</SourceName>
+<TargetName ID="1">हीता</TargetName>
+</Name>
+
+<Name ID="34">
+<SourceName>কীঅরা</SourceName>
+<TargetName ID="1">सबवे</TargetName>
+</Name>
+
+<Name ID="35">
+<SourceName>খদু</SourceName>
+<TargetName ID="1">यूथ</TargetName>
+</Name>
+
+<Name ID="36">
+<SourceName>নির্ভীক</SourceName>
+<TargetName ID="1">कहार</TargetName>
+</Name>
+
+<Name ID="37">
+<SourceName>বরীন্দবান</SourceName>
+<TargetName ID="1">ओवीश्कार</TargetName>
+</Name>
+
+<Name ID="38">
+<SourceName>লাল্লুভাই</SourceName>
+<TargetName ID="1">असेफा</TargetName>
+</Name>
+
+<Name ID="39">
+<SourceName>কার্নাজোড়া</SourceName>
+<TargetName ID="1">थडानी</TargetName>
+</Name>
+
+<Name ID="40">
+<SourceName>পুনির্মা</SourceName>
+<TargetName ID="1">अस्थमा</TargetName>
+</Name>
+
+<Name ID="41">
+<SourceName>মনোরিথা</SourceName>
+<TargetName ID="1">शकथी</TargetName>
+</Name>
+
+<Name ID="42">
+<SourceName>রামনাথপুরম</SourceName>
+<TargetName ID="1">मूव</TargetName>
+</Name>
+
+<Name ID="43">
+<SourceName>কার্দাং</SourceName>
+<TargetName ID="1">आइयाह</TargetName>
+</Name>
+
+<Name ID="44">
+<SourceName>মুর্শীদাবাদ</SourceName>
+<TargetName ID="1">यूटीई</TargetName>
+</Name>
+
+<Name ID="45">
+<SourceName>বৌঘটন</SourceName>
+<TargetName ID="1">वुडी</TargetName>
+</Name>
+
+<Name ID="46">
+<SourceName>মৃগযা</SourceName>
+<TargetName ID="1">श्रीदासरूप</TargetName>
+</Name>
+
+<Name ID="47">
+<SourceName>ফুয়েন্টশোলিংPHUENTSHOLING</SourceName>
+<TargetName ID="1">फर्डिनेंड</TargetName>
+</Name>
+
+<Name ID="48">
+<SourceName>আত্মন</SourceName>
+<TargetName ID="1">फायनांस</TargetName>
+</Name>
+
+<Name ID="49">
+<SourceName>রোসা</SourceName>
+<TargetName ID="1">अलाउद्दीन</TargetName>
+</Name>
+
+<Name ID="50">
+<SourceName>ভূমিতা</SourceName>
+<TargetName ID="1">देवापी</TargetName>
+</Name>
+
+<Name ID="51">
+<SourceName>প্রচীতী</SourceName>
+<TargetName ID="1">प्रेमेन्द्र</TargetName>
+</Name>
+
+<Name ID="52">
+<SourceName>আলাউদ্দিন</SourceName>
+<TargetName ID="1">मुनिर</TargetName>
+</Name>
+
+<Name ID="53">
+<SourceName>বাতলাগুন্দু</SourceName>
+<TargetName ID="1">वकील</TargetName>
+</Name>
+
+<Name ID="54">
+<SourceName>ভাদ</SourceName>
+<TargetName ID="1">दलबीर</TargetName>
+</Name>
+
+<Name ID="55">
+<SourceName>জুন্গ</SourceName>
+<TargetName ID="1">सुलामी</TargetName>
+</Name>
+
+<Name ID="56">
+<SourceName>অঘাজ</SourceName>
+<TargetName ID="1">गजबिये</TargetName>
+</Name>
+
+<Name ID="57">
+<SourceName>অলবনিয়</SourceName>
+<TargetName ID="1">प्रश्विता</TargetName>
+</Name>
+
+<Name ID="58">
+<SourceName>মিলস</SourceName>
+<TargetName ID="1">जयवंत</TargetName>
+</Name>
+
+<Name ID="59">
+<SourceName>জেন্নীশা</SourceName>
+<TargetName ID="1">सुब्बरायुडु</TargetName>
+</Name>
+
+<Name ID="60">
+<SourceName>সুমেরা</SourceName>
+<TargetName ID="1">रवितेज</TargetName>
+</Name>
+
+<Name ID="61">
+<SourceName>ঋষি</SourceName>
+<TargetName ID="1">मस्की</TargetName>
+</Name>
+
+<Name ID="62">
+<SourceName>জৈত্র</SourceName>
+<TargetName ID="1">नैति</TargetName>
+</Name>
+
+<Name ID="63">
+<SourceName>কুমরাহর</SourceName>
+<TargetName ID="1">इनिंग</TargetName>
+</Name>
+
+<Name ID="64">
+<SourceName>জীজ্ঞাশা</SourceName>
+<TargetName ID="1">रजक</TargetName>
+</Name>
+
+<Name ID="65">
+<SourceName>আরিত্র</SourceName>
+<TargetName ID="1">घोरपडे</TargetName>
+</Name>
+
+<Name ID="66">
+<SourceName>ফল্ট</SourceName>
+<TargetName ID="1">हॉस्टेज</TargetName>
+</Name>
+
+<Name ID="67">
+<SourceName>সলাল</SourceName>
+<TargetName ID="1">खेदुलाल</TargetName>
+</Name>
+
+<Name ID="68">
+<SourceName>ক্রয়স্তল</SourceName>
+<TargetName ID="1">मनजित</TargetName>
+</Name>
+
+<Name ID="69">
+<SourceName>মসালা</SourceName>
+<TargetName ID="1">बीकीला</TargetName>
+</Name>
+
+<Name ID="70">
+<SourceName>ত্রিলোকী</SourceName>
+<TargetName ID="1">मलकय्या</TargetName>
+</Name>
+
+<Name ID="71">
+<SourceName>কায়রো</SourceName>
+<TargetName ID="1">शांतिनाथ</TargetName>
+</Name>
+
+<Name ID="72">
+<SourceName>কুন্দ্রাথুর</SourceName>
+<TargetName ID="1">शमीर</TargetName>
+</Name>
+
+<Name ID="73">
+<SourceName>গান্ধিচক</SourceName>
+<TargetName ID="1">धारिका</TargetName>
+</Name>
+
+<Name ID="74">
+<SourceName>কাঁদু</SourceName>
+<TargetName ID="1">मुर</TargetName>
+</Name>
+
+<Name ID="75">
+<SourceName>সীরা</SourceName>
+<TargetName ID="1">मोनये</TargetName>
+</Name>
+
+<Name ID="76">
+<SourceName>ইন্কিত</SourceName>
+<TargetName ID="1">फ्रेडी</TargetName>
+</Name>
+
+<Name ID="77">
+<SourceName>মহাদেভাপ্পা</SourceName>
+<TargetName ID="1">गुपील</TargetName>
+</Name>
+
+<Name ID="78">
+<SourceName>কেজাল</SourceName>
+<TargetName ID="1">ज्योसना</TargetName>
+</Name>
+
+<Name ID="79">
+<SourceName>দর্শীশ</SourceName>
+<TargetName ID="1">रीयली</TargetName>
+</Name>
+
+<Name ID="80">
+<SourceName>অভিরুপা</SourceName>
+<TargetName ID="1">स्प्रेन</TargetName>
+</Name>
+
+<Name ID="81">
+<SourceName>পরিমলা</SourceName>
+<TargetName ID="1">तमांग</TargetName>
+</Name>
+
+<Name ID="82">
+<SourceName>পরমানংদা</SourceName>
+<TargetName ID="1">जटिलता</TargetName>
+</Name>
+
+<Name ID="83">
+<SourceName>মগলী</SourceName>
+<TargetName ID="1">यदूराया</TargetName>
+</Name>
+
+<Name ID="84">
+<SourceName>দৌলাতপুর</SourceName>
+<TargetName ID="1">आसादुद्दिन</TargetName>
+</Name>
+
+<Name ID="85">
+<SourceName>জগজীব</SourceName>
+<TargetName ID="1">राघवाचारी</TargetName>
+</Name>
+
+<Name ID="86">
+<SourceName>বঙ্কের্স</SourceName>
+<TargetName ID="1">दीव्यांक</TargetName>
+</Name>
+
+<Name ID="87">
+<SourceName>শান্খালিপি</SourceName>
+<TargetName ID="1">खेत्री</TargetName>
+</Name>
+
+<Name ID="88">
+<SourceName>তারিখি</SourceName>
+<TargetName ID="1">इक्बाल</TargetName>
+</Name>
+
+<Name ID="89">
+<SourceName>সাগা</SourceName>
+<TargetName ID="1">असेंड</TargetName>
+</Name>
+
+<Name ID="90">
+<SourceName>সবোরমতি</SourceName>
+<TargetName ID="1">मरिसा</TargetName>
+</Name>
+
+<Name ID="91">
+<SourceName>আঘাত</SourceName>
+<TargetName ID="1">नामुची</TargetName>
+</Name>
+
+<Name ID="92">
+<SourceName>কাটিযা</SourceName>
+<TargetName ID="1">चान्डलर</TargetName>
+</Name>
+
+<Name ID="93">
+<SourceName>কেসরীসুত</SourceName>
+<TargetName ID="1">बिच</TargetName>
+</Name>
+
+<Name ID="94">
+<SourceName>সংপত্তি</SourceName>
+<TargetName ID="1">सेत्रा</TargetName>
+</Name>
+
+<Name ID="95">
+<SourceName>বাঙ্ক</SourceName>
+<TargetName ID="1">व्हेस्परा</TargetName>
+</Name>
+
+<Name ID="96">
+<SourceName>জিনাভদ্র</SourceName>
+<TargetName ID="1">क्लैटन</TargetName>
+</Name>
+
+<Name ID="97">
+<SourceName>টেরাকতা</SourceName>
+<TargetName ID="1">डिल्लॉन</TargetName>
+</Name>
+
+<Name ID="98">
+<SourceName>রুদ্রনাথ</SourceName>
+<TargetName ID="1">निश्क</TargetName>
+</Name>
+
+<Name ID="99">
+<SourceName>কামনি</SourceName>
+<TargetName ID="1">कॅथी</TargetName>
+</Name>
+
+<Name ID="100">
+<SourceName>সিয়া</SourceName>
+<TargetName ID="1">एंड्रूज</TargetName>
+</Name>
+
+
+</TransliterationCorpus>
