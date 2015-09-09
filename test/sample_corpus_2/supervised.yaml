@@ -87,5 +87,5 @@ prior_config:
 ##  The debug log directory
 ## Optional
 ## No log generated if this key is absent 
-log_dir: /home/development/anoop/experiments/unsupervised_transliterator/src/transliterator/test/sample_workspace2/log
+log_dir: /home/development/anoop/experiments/unsupervised_transliterator/src/transliterator/test/sample_workspace_2/log
         
