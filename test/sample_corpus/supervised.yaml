@@ -36,7 +36,7 @@ initialization:
     
     ### based on phonetic mapping for Indic scripts 
     #indic_phonetic_mapping:
-    #     scale_factor_mapping_exists: 10.0
+    #     scale_factor: 10.0
     #     #similarity_function: 
     #     src: pa
     #     tgt: hi
@@ -69,7 +69,7 @@ prior_config:
     
     ### based on phonetic mapping for Indic scripts 
     #indic_phonetic_mapping:
-    #     scale_factor_mapping_exists: 10.0
+    #     scale_factor: 10.0
     #     #similarity_function: 
     #     src: pa
     #     tgt: hi

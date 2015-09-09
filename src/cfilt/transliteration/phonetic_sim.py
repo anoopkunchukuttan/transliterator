@@ -2,7 +2,7 @@ from indicnlp.script.indic_scripts import *
 
 def sim1(v1,v2,base=5.0): 
 
-    dotprod=float(np.dot( v1, v2 ))
+    dotprod=float(np.dot( v1, v2.T ))
     return np.power(base,dotprod) 
 
     #dotprod=float(np.dot( v1, v2 ))

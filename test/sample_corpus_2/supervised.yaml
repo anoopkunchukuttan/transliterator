@@ -36,7 +36,7 @@ initialization:
     
     ### based on phonetic mapping for Indic scripts 
     #indic_phonetic_mapping:
-    #     scale_factor_mapping_exists: 10.0
+    #     scale_factor: 10.0
     #     #similarity_function: 
     #     src: bn
     #     tgt: hi
@@ -60,19 +60,19 @@ prior_config:
     #random: 
     # scale: 1.0
 
-    ## based on rule based mapping for Indic scripts 
-    indic_mapping:
-         scale_factor_mapping_exists: 10.0
-         base_measure_mapping_exists: 1000.0    
-         src: bn
-         tgt: hi
-    
-    ### based on phonetic mapping for Indic scripts 
-    #indic_phonetic_mapping:
+    ### based on rule based mapping for Indic scripts 
+    #indic_mapping:
     #     scale_factor_mapping_exists: 10.0
-    #     #similarity_function: 
+    #     base_measure_mapping_exists: 1000.0    
     #     src: bn
     #     tgt: hi
+    
+    ## based on phonetic mapping for Indic scripts 
+    indic_phonetic_mapping:
+         scale_factor: 10.0
+         #similarity_function: 
+         src: bn
+         tgt: hi
     
     ### based on rule based mapping for English to Indic scripts 
     #en_il_mapping:

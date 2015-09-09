@@ -3,6 +3,8 @@ from cfilt.transliteration.utilities import *
 from cfilt.transliteration.parallel_decoder import *
 from cfilt.transliteration.unsupervised import *
 
+from indicnlp import loader 
+
 def unsupervised_training(fcorpus_fname, ecorpus_fname, config_param_fname, lm_fname, model_fname):
 
     config_params=read_yaml_file(config_param_fname)
@@ -91,6 +93,8 @@ def log_likelihood_unsupervised(translit_model_fname, lm_fname, fcorpus_fname, e
     print likelihood
 
 if __name__=='__main__': 
+
+    loader.load()
 
     commands={
                 'unsup_train':unsupervised_training,
