@@ -12,7 +12,8 @@ def unsupervised_training(fcorpus_fname, ecorpus_fname, config_param_fname, lm_f
 
     decoder_params=config_params.get('decoder_params',{})
     lm_model=load_lm_model(lm_fname,decoder_params.get('lm_order',TransliterationDecoder.DEFAULT_LM_ORDER))
-    em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname),lm_model)
+    lm_model_rerank=load_lm_model(lm_fname,5)
+    em.em_unsupervised_train(read_monolingual_corpus(fcorpus_fname),generate_char_set(ecorpus_fname),lm_model,lm_model_rerank)
     TransliterationModel.save_translit_model(em._translit_model, model_fname) 
 
 def supervised_training(fcorpus_fname, ecorpus_fname, config_param_fname, model_fname):

@@ -34,7 +34,7 @@ def restore_from_ascii(aln,lang_code):
 
         text.append(oc)
 
-    return text
+    return u''.join(text)
     
 
 def make_ascii(text,lang_code):
@@ -87,15 +87,18 @@ if __name__ == '__main__':
     tgtfname=sys.argv[2]
     lang=sys.argv[3]
     outdir=sys.argv[4]
+    reranked=''
+    if len(sys.argv)>=6: 
+        reranked='.reranked'
 
     if not os.path.exists(outdir): 
         os.mkdir(outdir)
 
     # align words
     alignments=list(align_transliterations(read_monolingual_corpus(srcfname),read_monolingual_corpus(tgtfname),lang))
-    with open(outdir+'/alignments.pickle','w') as align_file: 
+    with open(outdir+'/alignments{}.pickle'.format(reranked),'w') as align_file: 
         pickle.dump(alignments,align_file)
 
     # create confusion matrix 
     confusion_df=create_confusion_matrix(alignments)
-    confusion_df.to_pickle(outdir+'/confusion_mat.pickle')
+    confusion_df.to_pickle(outdir+'/confusion_mat{}.pickle'.format(reranked))

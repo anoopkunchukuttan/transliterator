@@ -23,12 +23,12 @@ cp $1 $workspace_dir/train.conf
 time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py unsup_train \
     $fcorpus_fname $ecorpus_fname $config_fname $lm_fname $workspace_dir/model/translit.model > $workspace_dir/log/train.log 2>&1 
 
-## supervised 
-## train
-#time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py sup_train \
-#    $fcorpus_fname $ecorpus_fname $config_fname $workspace_dir/model/translit.model > $workspace_dir/log/train.log 2>&1 
-
-
+### supervised 
+### train
+##time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py sup_train \
+##    $fcorpus_fname $ecorpus_fname $config_fname $workspace_dir/model/translit.model > $workspace_dir/log/train.log 2>&1 
+#
+#
 # test
 time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py transliterate_topn \
     $workspace_dir/model/translit.model $lm_fname $test_fcorpus_fname $workspace_dir/evaluation/test.nbest.$tgt_lang 10 $decoder_params_fname > $workspace_dir/log/decode.log 2>&1 

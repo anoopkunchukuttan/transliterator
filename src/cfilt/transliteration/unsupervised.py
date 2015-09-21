@@ -9,6 +9,7 @@ from cfilt.transliteration.decoder import *
 from cfilt.transliteration.parallel_decoder import *
 from cfilt.transliteration.utilities import *
 from cfilt.transliteration.char_mappings import *
+from cfilt.transliteration.reranker import * 
 
 from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTransliterator 
 from indicnlp import langinfo 
@@ -554,6 +555,12 @@ class UnsupervisedTransliteratorTrainer:
         """
     
         """
+        # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
+        self.wpairs_aligns=[]
+        self.wpairs_weights=[]
+        self.wpairs_eword_weights=[]
+        append=True
+
         # generate alignment information
         if append:
             ## first time
@@ -598,18 +605,20 @@ class UnsupervisedTransliteratorTrainer:
                 for es_id, fs_id in align: 
                     self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
     
-    def em_unsupervised_train(self,f_input_words,e_char_set,lm_model): 
+    def em_unsupervised_train(self,f_input_words,e_char_set,lm_model,lm_model_rerank=None): 
         """
         """
         print "Initializing unsupervised learning" 
         decoder_params=self._config.get('decoder_params',{})
-        topn=5
+        topn=10
         self._initialize_unsupervised_training(f_input_words,e_char_set)
+
+        ## Initialize Reranker
+        rr=ReRanker(lm_model_rerank,lm_model)
 
         niter=0
         output_words=None
         append=True
-        
 
         self._debug_log(niter)
 
@@ -618,35 +627,52 @@ class UnsupervisedTransliteratorTrainer:
 
             ## decode: approximate marginalization over all e strings by maximization
 
-            ### >>> Simple 1-best candidate based training (1)
+            #### >>> Simple 1-best candidate based training (1)
 
+            #print "Parallel Decoding for EM"
+            ## Implementation 1: bigram language model with top-1 candidate
+            #prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
+            #output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
+            #output_words=[ [(x,1.0)] for x in output_words ]
+            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+
+            ##print "Parallel Decoding for EM"
+            ## Implementation 2: bigram language model with top-1 candidate (but using the top-k decoder)
+            ##                   Effectively same as Implementation 1
+            ##prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
+            ##output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 1, decoder_params)
+            ##output_words=[ self._normalize_topn_scores(x) for x in output_words]
+            ##word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+
+            ##print "Parallel Decoding for EM"
+            ## Implementation 3: bigram language model with top-k candidates
+            ##                   with reranking of top-k candidates with n-gram LM, and then taking the top-1 candidate subsequently
+            ##prev_outputs=output_words if output_words is not None else [ [ ('',0.1)  ]*10 ]*len(f_input_words)
+            ##output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 10, decoder_params)
+            ##print "Rerank outputs"
+            ##output_words=[ rr.rerank_candidates(x) for x in output_words]  
+            ##output_words=[ self._normalize_topn_scores(x) for x in output_words]
+            ##word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+
+            #print "Preparing corpus"
+            #self._prepare_corpus_unsupervised(word_triplets,append)
+            ### >>>
+
+            ### >>> top-k candidate based training (without updating alignment probabilities ie not using e-step)
             print "Parallel Decoding for EM"
-            prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
-            output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
-            output_words=[ [(x,1.0)] for x in output_words ]
+            # Implementation 4: bigram language model with top-k candidates, whose weights are used in subsequent m-step 
+            # Could also rerank the candidates with a n-gram LM
+            prev_outputs=output_words if output_words is not None else [ [ ('',1.0/float(topn))  ]*topn ]*len(f_input_words)
+            output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, topn, decoder_params)
+            print "Rerank outputs"
+            output_words=[ rr.rerank_candidates(x) for x in output_words]  
+            output_words=[ self._normalize_topn_scores(x) for x in output_words]
             word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
-            #print "Parallel Decoding for EM"
-            #prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
-            #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 1, decoder_params)
-            #output_words=[ self._normalize_topn_scores(x) for x in output_words]
-            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
-
+            # initialize the EM training
             print "Preparing corpus"
-            self._prepare_corpus_unsupervised(word_triplets,append)
-            ## >>>
-
-            #### >>> top-k candidate based training (without updating alignment probabilities ie not using e-step)
-            #print "Parallel Decoding for EM"
-            #prev_outputs=output_words if output_words is not None else [ [ ('',1.0/float(topn))  ]*topn ]*len(f_input_words)
-            #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, topn, decoder_params)
-            #output_words=[ self._normalize_topn_scores(x) for x in output_words]
-            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
-
-            ## initialize the EM training
-            #print "Preparing corpus"
-            #self._prepare_corpus_unsupervised_topn(word_triplets, topn, append)
-            #### >>>
+            self._prepare_corpus_unsupervised_topn(word_triplets, topn, append)
+            ### >>>
 
             ## Updating param info to account for new parameters 
             #print "Updating param info" 
