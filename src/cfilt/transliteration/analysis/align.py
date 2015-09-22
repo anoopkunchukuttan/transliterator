@@ -13,6 +13,31 @@ from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTranslitera
 
 from cfilt.transliteration.utilities import *
 
+def restore_from_ascii_char(c,lang_code):
+    """
+    For Indic scripts only 
+    """
+    assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
+    cn=ord(c)
+    oc=''
+    if c=='-': # - character for alignment
+        oc=unicode(c)
+    elif c=='|': # placeholder character for invalid characters 
+        oc=unicode(c)
+    else:
+        if cn==0xff: # '-' character 
+            cn=0x2d
+        elif cn==0xfe: ## space 
+            cn=0x20
+        elif cn==0xfd: ## line feed
+            cn=0x0a
+        elif cn==0xfc: ## carriage return 
+            cn=0x0d
+        elif cn==0xfb: ## tab
+            cn=0x09
+        oc=unichr(cn+langinfo.SCRIPT_RANGES[lang_code][0])
+    return oc
+
 def restore_from_ascii(aln,lang_code):
     """
     For Indic scripts only 
@@ -21,21 +46,32 @@ def restore_from_ascii(aln,lang_code):
     text=[]
     
     for c in aln:
-        cn=ord(c)
-        oc=''
-        if c=='-': # - character for alignment
-            oc=unicode(c)
-        elif c=='|': # placeholder character for invalid characters 
-            oc=unicode(c)
-        else:
-            if cn==0xff:
-                cn=0x2d
-            oc=unichr(cn+langinfo.SCRIPT_RANGES[lang_code][0])
-
-        text.append(oc)
+        text.append(restore_from_ascii_char(c,lang_code))
 
     return u''.join(text)
-    
+
+def make_ascii_char(c,lang_code): 
+    """
+    For Indic scripts only 
+    """
+    assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
+    offset=ord(c)-langinfo.SCRIPT_RANGES[lang_code][0]
+    result=None 
+    if offset >=0 and offset <= 0x7F:
+        if offset==0x2d:
+            offset=0xff
+        elif offset==0x20:
+            offset=0xfe
+        elif offset==0x0a:
+            offset=0xfd
+        elif offset==0x0d:
+            offset=0xfc
+        elif offset==0x09:
+            offset=0xfb
+        result = chr(offset)
+    else: 
+        result = '|'   # placeholder character for invalid characters in stream
+    return result 
 
 def make_ascii(text,lang_code):
     """
@@ -44,13 +80,7 @@ def make_ascii(text,lang_code):
     assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
     trans_lit_text=[]
     for c in text: 
-        offset=ord(c)-langinfo.SCRIPT_RANGES[lang_code][0]
-        if offset >=0 and offset <= 0x7F:
-            if offset==0x2d:
-                offset=0xff
-            trans_lit_text.append(chr(offset))
-        else: 
-            trans_lit_text.append('|')   # placeholder character for invalid characters in stream
+        trans_lit_text.append(make_ascii_char(c,lang_code))
     return trans_lit_text
 
 def align_transliterations(src_wordlist,tgt_wordlist,lang):
@@ -70,7 +100,6 @@ def align_transliterations(src_wordlist,tgt_wordlist,lang):
 
         yield (src_aln,tgt_aln)
 
-
 def create_confusion_matrix(alignments):
     conf_dict=defaultdict(dict)
 
@@ -80,6 +109,19 @@ def create_confusion_matrix(alignments):
 
     conf_df=pd.DataFrame(conf_dict,dtype=float).T.fillna(0.0)
     return  conf_df 
+
+def score_phonetic_alignment(srcw,tgtw,slang,tlang,sim_matrix_path,gap_start_p=-1.0,gap_extend_p=-1.0):
+
+    # convert to ascii required by align library 
+    nsrcw=''.join(make_ascii(srcw,slang) if slang in langinfo.SCRIPT_RANGES else [str(c) for c in srcw ])
+    ntgtw=''.join(make_ascii(tgtw,tlang) if tlang in langinfo.SCRIPT_RANGES else [str(c) for c in tgtw ])
+    
+    ## use global alignment 
+    src_aln,tgt_aln=nw.global_align(nsrcw,ntgtw,matrix=sim_matrix_path, gap_open=gap_start_p, gap_extend=gap_extend_p)
+    return nw.score_alignment(src_aln,tgt_aln,matrix=sim_matrix_path, gap_open=gap_start_p, gap_extend=gap_extend_p)
+
+    #src_aln,tgt_aln=nw.global_align(nsrcw,ntgtw,gap_open=gap_start_p, gap_extend=gap_extend_p)
+    #return nw.score_alignment(src_aln,tgt_aln,gap_open=gap_start_p, gap_extend=gap_extend_p)
 
 if __name__ == '__main__': 
 
