@@ -837,6 +837,63 @@ def create_train_tun(datadir,src,tgt,tun_size='500'):
     os.unlink(datadir+'/train+tun.{}'.format(tgt))
     os.unlink(datadir+'/train+tun.{}'.format('id'))
 
+def create_train_tun_test(datadir,src,tgt,tun_size='1000',test_size='1500'):
+
+    tun_size=int(tun_size)
+    test_size=int(test_size)
+
+    # rename files 
+    os.rename(datadir+'/train.{}'.format(src),datadir+'/train+tun.{}'.format(src))
+    os.rename(datadir+'/train.{}'.format(tgt),datadir+'/train+tun.{}'.format(tgt))
+
+    # read original training file     
+    srcfile=codecs.open(datadir+'/train+tun.{}'.format(src),'r','utf-8')
+    tgtfile=codecs.open(datadir+'/train+tun.{}'.format(tgt),'r','utf-8')
+
+    dataset=list( itertools.izip( iter(srcfile) , iter(tgtfile) ) )
+    random.shuffle(dataset)
+    print len(dataset)
+
+    srcfile.close()
+    tgtfile.close()
+
+    # create new training file 
+    trainsrcfile=codecs.open(datadir+'/train.{}'.format(src),'w','utf-8')
+    traintgtfile=codecs.open(datadir+'/train.{}'.format(tgt),'w','utf-8')
+
+    for srcline,tgtline in dataset[test_size+tun_size:]: 
+        trainsrcfile.write(srcline)
+        traintgtfile.write(tgtline)
+
+    trainsrcfile.close()
+    traintgtfile.close()
+
+    # create new tuning file 
+    tunsrcfile=codecs.open(datadir+'/tun.{}'.format(src),'w','utf-8')
+    tuntgtfile=codecs.open(datadir+'/tun.{}'.format(tgt),'w','utf-8')
+
+    for srcline,tgtline in dataset[test_size:test_size+tun_size]: 
+        tunsrcfile.write(srcline)
+        tuntgtfile.write(tgtline)
+
+    tunsrcfile.close()
+    tuntgtfile.close()
+
+    # create new test file 
+    testsrcfile=codecs.open(datadir+'/test.{}'.format(src),'w','utf-8')
+    testtgtfile=codecs.open(datadir+'/test.{}'.format(tgt),'w','utf-8')
+
+    for srcline,tgtline in dataset[:test_size]: 
+        testsrcfile.write(srcline)
+        testtgtfile.write(tgtline)
+
+    testsrcfile.close()
+    testtgtfile.close()
+
+    # unlink file 
+    os.unlink(datadir+'/train+tun.{}'.format(src))
+    os.unlink(datadir+'/train+tun.{}'.format(tgt))
+
 def postprocess_nbest_list(nbest_fname, systemtype): 
     #parameters to pipeline elements 
     order=2 
@@ -1073,6 +1130,7 @@ if __name__=='__main__':
         'extract_common_msr_corpus':extract_common_msr_corpus,
 
         'create_train_tun':create_train_tun,
+        'create_train_tun_test':create_train_tun_test,
 
         'add_markers_corpus':add_markers_corpus,
         'remove_markers':remove_markers,
