@@ -504,11 +504,12 @@ class UnsupervisedTransliteratorTrainer:
         """
            reuses weights from previous iteration
         """
-       
-        # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
-        self.wpairs_aligns=[]
-        self.wpairs_weights=[]
-        append=True
+      
+        if not self._config.get('reuse_alignment_weights',False):
+            # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
+            self.wpairs_aligns=[]
+            self.wpairs_weights=[]
+            append=True
 
         if append:
             for widx, (f,e_cands,e_prev_cands) in enumerate(word_triplets): 
@@ -555,11 +556,12 @@ class UnsupervisedTransliteratorTrainer:
         """
     
         """
-        # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
-        self.wpairs_aligns=[]
-        self.wpairs_weights=[]
-        self.wpairs_eword_weights=[]
-        append=True
+        if not self._config.get('reuse_alignment_weights',False):
+            # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
+            self.wpairs_aligns=[]
+            self.wpairs_weights=[]
+            self.wpairs_eword_weights=[]
+            append=True
 
         # generate alignment information
         if append:
@@ -630,29 +632,29 @@ class UnsupervisedTransliteratorTrainer:
             ### >>> Simple 1-best candidate based training (1)
 
             print "Parallel Decoding for EM"
-            # Implementation 1: bigram language model with top-1 candidate
-            prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
-            output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
-            output_words=[ [(x,1.0)] for x in output_words ]
-            word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+            if not self._config.get('rerank_decode_step',False):
+                # Implementation 1: bigram language model with top-1 candidate
+                prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
+                output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
+                output_words=[ [(x,1.0)] for x in output_words ]
+                word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
-            #print "Parallel Decoding for EM"
-            # Implementation 2: bigram language model with top-1 candidate (but using the top-k decoder)
-            #                   Effectively same as Implementation 1
-            #prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
-            #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 1, decoder_params)
-            #output_words=[ self._normalize_topn_scores(x) for x in output_words]
-            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
-
-            #print "Parallel Decoding for EM"
-            # Implementation 3: bigram language model with top-k candidates
-            #                   with reranking of top-k candidates with n-gram LM, and then taking the top-1 candidate subsequently
-            #prev_outputs=output_words if output_words is not None else [ [ ('',0.1)  ]*10 ]*len(f_input_words)
-            #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 10, decoder_params)
-            #print "Rerank outputs"
-            #output_words=[ rr.rerank_candidates(x) for x in output_words]  
-            #output_words=[ self._normalize_topn_scores(x) for x in output_words]
-            #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+                # Implementation 2: bigram language model with top-1 candidate (but using the top-k decoder)
+                #                   Effectively same as Implementation 1
+                #prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
+                #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 1, decoder_params)
+                #output_words=[ self._normalize_topn_scores(x) for x in output_words]
+                #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+            
+            else: 
+                # Implementation 3: bigram language model with top-k candidates
+                #                   with reranking of top-k candidates with n-gram LM, and then taking the top-1 candidate subsequently
+                prev_outputs=output_words if output_words is not None else [ [ ('',0.1)  ]*10 ]*len(f_input_words)
+                output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 10, decoder_params)
+                print "Rerank outputs"
+                output_words=[ rr.rerank_candidates(x) for x in output_words]  
+                output_words=[ self._normalize_topn_scores(x) for x in output_words]
+                word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
             print "Preparing corpus"
             self._prepare_corpus_unsupervised(word_triplets,append)

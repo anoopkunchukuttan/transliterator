@@ -16,6 +16,13 @@ allowed_mappings:
     - 1 
     - 2 
 
+## Whether alignment weights computed by e-step  should be used in next iteration
+reuse_alignment_weights: False
+
+## After decoding, should the candidates transliterations be decoded using a higher order language model.
+## This is to be used when the baseline language model that the decoder uses is a bigram language model 
+rerank_decode_step: False
+
 ## EM parameter initialization
 # Optional
 # one of random/dirichlet/uniform
