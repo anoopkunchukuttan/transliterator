@@ -9,22 +9,15 @@ ecorpus_fname="$data_dir/train.$tgt_lang"
 test_fcorpus_fname="$data_dir/test.$src_lang"
 test_ecorpus_fname="$data_dir/test.$tgt_lang"
 
-#training_corpus_dir=""
-#test_corpus_dir=""
-
 ## unsupervised model dir
 unsup_model="$workspace_dir/model/translit.model"
 lm_2g_fname=$lm_fname 
-lm_ng_fname=$lm_ng_fname 
+lm_ng_fname=$lm_fname 
 lm_n_order="5"
 topk="10"
 
 ##  output directory
 output_dir="$2"
-
-### 
-#vtuning_set=1000
-#pbsmt_conf_template_fname=""
 
 ### make the required directories 
 mkdir -p $output_dir/results
