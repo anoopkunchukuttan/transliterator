@@ -1,0 +1,217 @@
+#!/bin/bash 
+
+## read config file 
+. $1 
+
+mkdir -p  $output_dir
+cp $1 $output_dir/stage2.conf
+
+######  FIX the paramters 
+
+## environment variables 
+#MOSES_DIR="/usr/local/bin/smt/mosesdecoder-3.0"
+MOSES_DIR="/usr/local/bin/smt/mosesdecoder-latest-25Dec2015"
+MOSES_CMD="$MOSES_DIR/bin/moses"
+SCRIPTS_ROOTDIR="$MOSES_DIR/scripts"
+JOBSCRIPT="/usr/local/bin/smt/moses_job_scripts/moses_run.sh"
+
+## template files 
+pbsmt_conf_template_fname="$XLIT_HOME/scripts/supervised_stage2_moses_template.conf"
+fillup_tun_template_fname="$XLIT_HOME/scripts/fillup_tun_template_moses.ini"
+mdp_either_tun_template_fname="$XLIT_HOME/scripts/mdp_either_tun_template_moses.ini"
+mdp_union_tun_template_fname="$XLIT_HOME/scripts/mdp_union_tun_template_moses.ini"
+dyn_backoff_tun_template_fname="$XLIT_HOME/scripts/dyn_backoff_tun_template_moses.ini"
+
+##### Initialize for the first iteration 
+src_corpus=$corpus_dir/all.$src_lang  
+tgt_corpus=$corpus_dir/all.nbest.reranked.$tgt_lang  
+citer=1
+
+while true 
+do
+
+iter_dir=$output_dir/$citer
+mkdir -p $iter_dir/{corpus,evaluation,workspace,log,conf}
+mkdir -p $iter_dir/combinations/{top1,fillup,dynamic_selection_indecoder,dynamic_combination_indecoder,dynamic_combination_postdecoder,dynamic_backoff}
+mkdir -p $iter_dir/evaluation/{top1,fillup,dynamic_selection_indecoder,dynamic_combination_indecoder,dynamic_combination_postdecoder,dynamic_backoff}
+
+### tuning files - the last 1000 sentences in the first split
+src_tune_ref="$iter_dir/corpus/0/tun.$src_lang" 
+tgt_tune_ref="$iter_dir/corpus/0/tun.$tgt_lang" 
+
+### create the corpus for training PBSMT system     
+time python $XLIT_HOME/src/cfilt/transliteration/phrase_based.py create_synthetic_corpus_split \
+            $src_corpus  \
+            $tgt_corpus  \
+            $iter_dir/corpus \
+            $src_lang \
+            $tgt_lang \
+            $topk \
+            $vtuning_set 
+
+for corpusno in `seq 0 $((topk-1))`
+do 
+    ##### create the configuration file 
+    
+    python $XLIT_HOME/src/cfilt/transliteration/phrase_based.py create_moses_run_params \
+            $pbsmt_conf_template_fname\
+            $iter_dir/conf/pbmst_$corpusno.conf \
+            $iter_dir/workspace/$corpusno/ \
+            $iter_dir/corpus/$corpusno \
+            $lm_fname  \
+            $src_lang \
+            $tgt_lang \
+    
+    ### train the PBSMT model
+    #NOTE: this can be marked as notun
+    nohup $JOBSCRIPT $iter_dir/conf/pbmst_$corpusno.conf notune > $iter_dir/log/pbsmt_train_$corpusno.log  2>&1  
+
+    gunzip -c $iter_dir/workspace/$corpusno/moses_data/model/phrase-table.gz >  $iter_dir/workspace/$corpusno/moses_data/model/phrase-table
+    echo ;
+done 
+
+#### combine 
+
+#### FILLUP combination 
+    combmethod=fillup
+    ### merge tables 
+
+    cmdline=""
+    for corpusno in `seq 0 $((topk-1))`
+    do 
+        cmdline="$cmdline $iter_dir/workspace/$corpusno/moses_data/model/phrase-table"
+    done 
+    $MOSES_DIR/contrib/combine-ptables/combine-ptables.pl --mode=fillup $cmdline > $iter_dir/combinations/$combmethod/phrase-table ;
+
+    #### create moses.ini file for the combined table 
+    python $XLIT_HOME/src/cfilt/transliteration/phrase_based.py create_moses_ini_params \
+            $fillup_tun_template_fname \
+            $iter_dir/combinations/$combmethod/moses_$combmethod.ini \
+            13 \
+            $iter_dir/combinations/$combmethod/phrase-table \
+            $lm_fname  \
+            5 
+
+    working_dir="$iter_dir/combinations/$combmethod/tuning/" 
+    start_ini_fname="$iter_dir/combinations/$combmethod/moses_$combmethod.ini" 
+    final_ini_fname="$working_dir/moses.ini" 
+    evaluation_dir=$iter_dir/evaluation/$combmethod
+
+
+######    DYNAMIC_SELECTION_INDECODER
+    combmethod=dynamic_selection_indecoder
+    
+    #### create moses.ini file for the combined table 
+    python $XLIT_HOME/src/cfilt/transliteration/phrase_based.py create_moses_ini_params \
+            $mdp_either_tun_template_fname \
+            $iter_dir/combinations/$combmethod/moses_$combmethod.ini \
+            4 \
+            $iter_dir/workspace \
+            $lm_fname  \
+            5 
+    
+    working_dir="$iter_dir/combinations/$combmethod/tuning/" 
+    start_ini_fname="$iter_dir/combinations/$combmethod/moses_$combmethod.ini" 
+    final_ini_fname="$working_dir/moses.ini" 
+    evaluation_dir=$iter_dir/evaluation/$combmethod
+
+######    DYNAMIC_BACKOFF
+    combmethod=dynamic_backoff
+    
+    #### create moses.ini file for the combined table 
+    python $XLIT_HOME/src/cfilt/transliteration/phrase_based.py create_moses_ini_params \
+            $dyn_backoff_tun_template_fname \
+            $iter_dir/combinations/$combmethod/moses_$combmethod.ini \
+            4 \
+            $iter_dir/workspace \
+            $lm_fname  \
+            5 
+    
+    working_dir="$iter_dir/combinations/$combmethod/tuning/" 
+    start_ini_fname="$iter_dir/combinations/$combmethod/moses_$combmethod.ini" 
+    final_ini_fname="$working_dir/moses.ini" 
+    evaluation_dir=$iter_dir/evaluation/$combmethod
+
+######    DYNAMIC_COMBINATION_INDECODER
+    combmethod=dynamic_combination_indecoder
+    
+    #### create moses.ini file for the combined table 
+    python $XLIT_HOME/src/cfilt/transliteration/phrase_based.py create_moses_ini_params \
+            $mdp_union_tun_template_fname \
+            $iter_dir/combinations/$combmethod/moses_$combmethod.ini \
+            40 \
+            $iter_dir/workspace \
+            $lm_fname  \
+            5 
+    
+    working_dir="$iter_dir/combinations/$combmethod/tuning/" 
+    start_ini_fname="$iter_dir/combinations/$combmethod/moses_$combmethod.ini" 
+    final_ini_fname="$working_dir/moses.ini" 
+    evaluation_dir=$iter_dir/evaluation/$combmethod
+
+######    TOP-1 
+    combmethod=top1
+    
+    working_dir="$iter_dir/combinations/$combmethod/tuning/" 
+    start_ini_fname="$iter_dir/workspace/0/moses_data/model/moses.ini" 
+    final_ini_fname="$working_dir/moses.ini" 
+    evaluation_dir=$iter_dir/evaluation/$combmethod
+    
+#####    DYNAMIC_COMBINATION_POSTDECODER
+
+####### this code is same to all the combination methods 
+#### tune 
+### set working_dir and start_ini_fname variables 
+$SCRIPTS_ROOTDIR/training/mert-moses.pl \
+        $src_tune_ref \
+        $tgt_tune_ref \
+        "$MOSES_CMD"  \
+        $start_ini_fname \
+        --working-dir $working_dir \
+        --batch-mira \
+         --rootdir "$SCRIPTS_ROOTDIR" \
+        --decoder-flags='-threads 20 -distortion-limit 0'
+
+##### evaluate on test set
+# set final_ini_fname and evaluation_dir variables 
+$MOSES_CMD -n-best-list $evaluation_dir/test.nbest.reranked.$tgt_lang 10 distinct -f $final_ini_fname \
+    < $test_data_dir/test.$src_lang > $evaluation_dir/test.$tgt_lang 2> $iter_dir/log/pbsmt_evaluate_$combmethod.log 
+
+ref_xml=$test_data_dir/test.xml
+
+# generate NEWS 2015 evaluation format output file 
+python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+        "$test_data_dir/test.id" \
+        "$ref_xml" \
+        "$evaluation_dir/test.nbest.reranked.$tgt_lang" \
+        "$evaluation_dir/test.nbest.reranked.$tgt_lang.xml" \
+        "pbsmt" "testset" "$src_lang" "$tgt_lang"  
+
+# run evaluation 
+python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+        -t $ref_xml \
+        -i $evaluation_dir/test.nbest.reranked.$tgt_lang.xml \
+        -o $evaluation_dir/test.nbest.reranked.$tgt_lang.detaileval.csv \
+        >  $evaluation_dir/test.nbest.reranked.$tgt_lang.eval 
+
+#### break if all iterations done
+echo Completed iteration $citer of $niter 
+
+if [ $citer -eq $niter ]
+then 
+    break 
+fi 
+
+### update citer 
+
+####### create virtual corpus for next iteration 
+#
+#$output_dir/$itern/corpus 
+#mkdir 
+#
+### update the variables to the new file 
+
+
+done 
+
+
