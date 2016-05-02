@@ -11,18 +11,18 @@ ecorpus_fname="$data_dir/train.$tgt_lang"
 test_fcorpus_fname="$data_dir/test.$src_lang"
 test_ecorpus_fname="$data_dir/test.$tgt_lang"
 
-#if [ -d $workspace_dir ]
-#then     
-#    rm -rf $workspace_dir
-#fi 
-#
-#mkdir -p $workspace_dir/{evaluation,model,log}
-#
-#cp $1 $workspace_dir/train.conf
-#
-## test
-#time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py transliterate_topn \
-#    $model_fname $lm_fname $test_fcorpus_fname $workspace_dir/evaluation/test.50best.$tgt_lang 50 $decoder_params_fname > $workspace_dir/log/decode.log 2>&1 
+if [ -d $workspace_dir ]
+then     
+    rm -rf $workspace_dir
+fi 
+
+mkdir -p $workspace_dir/{evaluation,model,log}
+
+cp $1 $workspace_dir/train.conf
+
+# test
+time python $XLIT_HOME/src/cfilt/transliteration/transliterate_cli.py transliterate_topn \
+    $model_fname $lm_fname $test_fcorpus_fname $workspace_dir/evaluation/test.50best.$tgt_lang 50 $decoder_params_fname > $workspace_dir/log/decode.log 2>&1 
 
 # convert to k-best format 
 python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_kbest_format  \
