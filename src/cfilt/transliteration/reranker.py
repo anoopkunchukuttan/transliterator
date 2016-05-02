@@ -3,7 +3,7 @@ import numpy
 from srilm import * 
 from cfilt.transliteration.utilities import *
 from collections import defaultdict
-import aggregate_api
+#import aggregate_api
 
 #def rerank_topn_moses_format(infname,outfname,n,lm_fname,lm_order): 
 #    """
@@ -42,6 +42,9 @@ import aggregate_api
 def sent_score(sentence,lm_model):
     return getSentenceProb(lm_model,sentence.encode('utf-8'),len(sentence.split(' ')))/LOG_E_BASE10
 
+def word_score(word,lm_model):
+    return getSentenceProb(lm_model,word.encode('utf-8'),1)/LOG_E_BASE10
+
 ### Methods for parsing n-best lists
 def parse_line(line):
     """
@@ -75,11 +78,25 @@ class ReRanker(object):
         self._lm_model_org=lm_model_org 
     
     def rerank_candidates(self,candidates): 
+        #### The join is not required
         new_candidates=[ (x, score - sent_score(''.join(x),self._lm_model_org) + sent_score(''.join(x),self._lm_model)) \
                         for x, score in candidates]
         new_candidates.sort(key=operator.itemgetter(1),reverse=True)
         return new_candidates
 
+class WordLMReRanker(object): 
+
+    def __init__(self,lm_model_word,lm_model_org):
+        self._lm_model_word=lm_model_word
+        self._lm_model_org=lm_model_org 
+    
+    def rerank_candidates(self,candidates): 
+        #new_candidates=[ (x, score - sent_score(x,self._lm_model_org) + word_score(x.replace(u' ',u''),self._lm_model_word)) \
+        #                for x, score in candidates]
+        new_candidates=[ (x, score + word_score(x.replace(u' ',u''),self._lm_model_word)) \
+                        for x, score in candidates]
+        new_candidates.sort(key=operator.itemgetter(1),reverse=True)
+        return new_candidates
 
 def rerank_file(infname, outfname,str_n,lm_fname,str_order): 
 
@@ -90,6 +107,22 @@ def rerank_file(infname, outfname,str_n,lm_fname,str_order):
     lm_model_org=load_lm_model(lm_fname,2)
 
     r=ReRanker(lm_model,lm_model_org)
+
+    with codecs.open(outfname,'w','utf-8') as outfile: 
+        for sent_no, candidates in iterate_nbest_list(infname): 
+            ranked_candidates=r.rerank_candidates([ (x[1], x[3]) for x in candidates] )
+            for cand in ranked_candidates[:n]: 
+                outfile.write(u'{} ||| {} ||| {} ||| {}\n'.format(sent_no,cand[0],u'',cand[1]))
+
+def rerank_wordlm_file(infname, outfname,str_n,char_lm_fname,word_lm_fname): 
+
+    n=int(str_n)
+    order=1
+
+    lm_model=load_lm_model(word_lm_fname,order)
+    lm_model_org=load_lm_model(char_lm_fname,2)
+
+    r=WordLMReRanker(lm_model,lm_model_org)
 
     with codecs.open(outfname,'w','utf-8') as outfile: 
         for sent_no, candidates in iterate_nbest_list(infname): 
@@ -118,39 +151,39 @@ def lin_combination(nbest_for_systems):
 
     return sorted(combination_scores.items(), key=lambda x:x[1], reverse=True)
 
-def rank_aggregation(nbest_for_systems, nrankers, agg, arguments): 
-    """
-    Rank aggregation of multiple n-best lists for one instance
-
-    nbest_for_systems: is a list with one element for each system being combined. Each element is an n-best list in the form of tuple (transliteration,score)
-
-    return list of tuples (candidates, score) sorted in decreasing order. This is the best linear combination of the multiple n-best lists 
-    """
-
-    rankings=defaultdict(lambda:[None]*nrankers)
-    ranker_names=[]
-
-    for list_id, nbest_list in enumerate(nbest_for_systems): 
-        for r, (_, cand, _, score) in enumerate(nbest_list[1]): 
-            rankings[cand][list_id]=r
-
-    ## create input for API
-    ranking_objects={}
-    
-    oid=0
-    id_cand_mapping={}
-    for cand, rankers in rankings.iteritems(): 
-        oid+=1
-        ranking_objects[oid]=rankers
-        id_cand_mapping[oid]=cand
-
-    ranker_names=[ str(x)  for x in xrange(nrankers) ]
-
-    #print ranking_objects
-    #print id_cand_mapping
-    ranked_objects=aggregate_api.aggregate(ranking_objects, ranker_names, agg, arguments)
-
-    return [ (id_cand_mapping[x],0.0) for x in ranking_objects ]
+#def rank_aggregation(nbest_for_systems, nrankers, agg, arguments): 
+#    """
+#    Rank aggregation of multiple n-best lists for one instance
+#
+#    nbest_for_systems: is a list with one element for each system being combined. Each element is an n-best list in the form of tuple (transliteration,score)
+#
+#    return list of tuples (candidates, score) sorted in decreasing order. This is the best linear combination of the multiple n-best lists 
+#    """
+#
+#    rankings=defaultdict(lambda:[None]*nrankers)
+#    ranker_names=[]
+#
+#    for list_id, nbest_list in enumerate(nbest_for_systems): 
+#        for r, (_, cand, _, score) in enumerate(nbest_list[1]): 
+#            rankings[cand][list_id]=r
+#
+#    ## create input for API
+#    ranking_objects={}
+#    
+#    oid=0
+#    id_cand_mapping={}
+#    for cand, rankers in rankings.iteritems(): 
+#        oid+=1
+#        ranking_objects[oid]=rankers
+#        id_cand_mapping[oid]=cand
+#
+#    ranker_names=[ str(x)  for x in xrange(nrankers) ]
+#
+#    #print ranking_objects
+#    #print id_cand_mapping
+#    ranked_objects=aggregate_api.aggregate(ranking_objects, ranker_names, agg, arguments)
+#
+#    return [ (id_cand_mapping[x],0.0) for x in ranking_objects ]
 
 def combine_nbest_files(list_fname, out_fname, str_n, combination_method=lin_combination): 
     """
@@ -189,6 +222,7 @@ if __name__ == '__main__':
    
     commands={
                 'rerank_file': rerank_file,
+                'rerank_wordlm_file': rerank_wordlm_file,
                 'combine_nbest_files': combine_nbest_files, 
             }
 
