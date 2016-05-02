@@ -4,10 +4,17 @@ export PYTHONPATH=$PYTHONPATH:$XLIT_HOME/src
 
 . $1
 
+### char LM reranking
 python $XLIT_HOME/src/cfilt/transliteration/reranker.py rerank_file \
     $workspace_dir/evaluation/test.50best.$tgt_lang \
     $workspace_dir/evaluation/test.nbest.reranked.$tgt_lang \
-    10 $lm_fname 5
+    10 $lm_fname 
+
+#### word LM reranking
+#python $XLIT_HOME/src/cfilt/transliteration/reranker.py rerank_wordlm_file \
+#    $workspace_dir/evaluation/test.50best.$tgt_lang \
+#    $workspace_dir/evaluation/test.nbest.reranked.$tgt_lang \
+#    10 $lm_fname $word_lm_fname
 
 # generate NEWS 2015 evaluation format output file 
 python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
