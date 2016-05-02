@@ -758,6 +758,63 @@ def count_common_msr_corpus(en1_fname,en2_fname):
 
             print len(en1_words.intersection(en2_words))
 
+def extract_exclusive_msr_corpus(c0_dir, c1_dir, c0_lang, c1_lang, outdir ): 
+
+    factory=IndicNormalizerFactory()
+    l0_normalizer=factory.get_normalizer(lang_code_mapping[c0_lang])
+    l1_normalizer=factory.get_normalizer(lang_code_mapping[c1_lang])
+
+    data_cache=defaultdict(lambda : [set(),set()])
+
+    # read corpus 0
+    en0_f=codecs.open(c0_dir+'/train.En','r','utf-8')
+    l0_f=codecs.open(c0_dir+'/train.'+c0_lang,'r','utf-8')
+
+    for en_l,c_l in itertools.izip(iter(en0_f),iter(l0_f)): 
+        data_cache[en_l.strip()][0].add(l0_normalizer.normalize(c_l.strip()))
+
+    en0_f.close()
+    l0_f.close()
+
+    # read corpus 1                
+    en1_f=codecs.open(c1_dir+'/train.En','r','utf-8')
+    l1_f=codecs.open(c1_dir+'/train.'+c1_lang,'r','utf-8')
+
+    for en_l,c_l in itertools.izip(iter(en1_f),iter(l1_f)): 
+        data_cache[en_l.strip()][1].add(l1_normalizer.normalize(c_l.strip()))
+
+    en1_f.close()
+    l1_f.close()
+
+    # write the common data
+
+    # from language en to c0 
+    xor_f=codecs.open(outdir+'/train.{}-{}'.format('En',c0_lang),'w','utf-8')
+    xor_list=[]
+    for en_l, other_l_lists in data_cache.iteritems(): 
+        if (len(other_l_lists[0]) >0 and len(other_l_lists[1]) == 0): 
+            other_l_lists_w=[u''.join(x.split()) for x in other_l_lists[0]]
+            xor_list.append(u''.join(en_l.split()) + u'|' + u'^'.join(other_l_lists_w)+u'\n')
+
+    random.shuffle(xor_list)
+    for wr in xor_list: 
+        xor_f.write(wr)
+
+    xor_f.close()
+
+    # from language en to c1 
+    xor_f=codecs.open(outdir+'/train.{}-{}'.format('En',c1_lang),'w','utf-8')
+    xor_list=[]
+    for en_l, other_l_lists in data_cache.iteritems(): 
+        if (len(other_l_lists[0]) ==0 and len(other_l_lists[1]) > 0): 
+            other_l_lists_w=[u''.join(x.split()) for x in other_l_lists[1]]
+            xor_list.append(u''.join(en_l.split()) + u'|' + u'^'.join(other_l_lists_w)+u'\n')
+
+    random.shuffle(xor_list)
+    for wr in xor_list: 
+        xor_f.write(wr)
+
+    xor_f.close()
 
 ### Corpus management methods 
 
@@ -930,6 +987,13 @@ def convert_to_1best_format(infname,outfname):
     with codecs.open(outfname,'w','utf-8') as outfile:
         for sent_no, parsed_lines in iterate_nbest_list(infname): 
             outfile.write(parsed_lines[0][1].strip()+u'\n')
+
+def convert_to_kbest_format(infname,outfname,k_str):
+    k=int(k_str)
+    with codecs.open(outfname,'w','utf-8') as outfile:
+        for sent_no, parsed_lines in iterate_nbest_list(infname): 
+            for i in xrange(0,k): 
+                outfile.write( u'{} ||| {} ||| {} ||| {}\n'.format( *parsed_lines[i]  ) )
 
 def correct_vowels(nbest_fname,lang): 
     """
@@ -1128,6 +1192,7 @@ if __name__=='__main__':
         'randomize_and_select':randomize_and_select,
         'count_common_msr_corpus':count_common_msr_corpus,
         'extract_common_msr_corpus':extract_common_msr_corpus,
+        'extract_exclusive_msr_corpus':extract_exclusive_msr_corpus,
 
         'create_train_tun':create_train_tun,
         'create_train_tun_test':create_train_tun_test,
@@ -1138,6 +1203,7 @@ if __name__=='__main__':
         'postprocess_nbest_list':postprocess_nbest_list,
         'convert_to_nbest_format':convert_to_nbest_format,
         'convert_to_1best_format':convert_to_1best_format,
+        'convert_to_kbest_format':convert_to_kbest_format,
 
         'correct_vowels':correct_vowels,
 
