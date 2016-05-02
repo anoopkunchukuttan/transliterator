@@ -44,7 +44,7 @@ initialization:
     ### based on phonetic mapping for Indic scripts 
     #indic_phonetic_mapping:
     #     scale_factor: 10.0
-    #     #similarity_function: 
+    #     #sim_funct: sim1 (or cosine)
     #     src: pa
     #     tgt: hi
     
@@ -77,7 +77,7 @@ prior_config:
     ### based on phonetic mapping for Indic scripts 
     #indic_phonetic_mapping:
     #     scale_factor: 10.0
-    #     #similarity_function: 
+    #     #sim_funct: sim1 (or cosine)
     #     src: pa
     #     tgt: hi
     
