@@ -137,37 +137,37 @@ def read_lines(corpus_fname):
 #    tun_tgt_file.close()
 #    tun_score_file.close()
 
-def create_synthetic_corpus(src_fname,tgt_fname,parallel_dir,src_l,tgt_l,n_xlit=10,n_tun=1000):
+### Methods for parsing n-best lists
+def parse_line(line):
+    """
+        line in n-best file 
+        return list of fields
+    """
+    fields=[ x.strip() for x in  line.strip().split('|||') ]
+    fields[0]=int(fields[0])
+    fields[3]=float(fields[3])
+    return fields
+
+def iterate_nbest_list(nbest_fname): 
+    """
+        nbest_fname: moses format nbest file name 
+        return iterator over tuple of sent_no, list of n-best candidates
+
+    """
+
+    infile=codecs.open(nbest_fname,'r','utf-8')
+    
+    for sent_no, lines in it.groupby(iter(infile),key=lambda x:parse_line(x)[0]):
+        parsed_lines = [ parse_line(line) for line in lines ]
+        yield((sent_no,parsed_lines))
+
+    infile.close()
+
+def create_synthetic_corpus_split(src_fname,tgt_fname,parallel_dir,src_l,tgt_l,n_xlit=10,n_tun=1000):
     """
     Read the final synthesizede parallel corpus obtained from decoding with final paramters, which is in moses format  
     nxlit: number of transliterations to extract 
     """
-
-    ### Methods for parsing n-best lists
-    def parse_line(line):
-        """
-            line in n-best file 
-            return list of fields
-        """
-        fields=[ x.strip() for x in  line.strip().split('|||') ]
-        fields[0]=int(fields[0])
-        fields[3]=float(fields[3])
-        return fields
-    
-    def iterate_nbest_list(nbest_fname): 
-        """
-            nbest_fname: moses format nbest file name 
-            return iterator over tuple of sent_no, list of n-best candidates
-    
-        """
-    
-        infile=codecs.open(nbest_fname,'r','utf-8')
-        
-        for sent_no, lines in it.groupby(iter(infile),key=lambda x:parse_line(x)[0]):
-            parsed_lines = [ parse_line(line) for line in lines ]
-            yield((sent_no,parsed_lines))
-    
-        infile.close()
 
     ## get the output from the transliteration system's training set decoding 
     all_src_lines=None
@@ -211,18 +211,83 @@ def create_synthetic_corpus(src_fname,tgt_fname,parallel_dir,src_l,tgt_l,n_xlit=
         tun_src_files[i].close()
         tun_tgt_files[i].close()
 
-def create_moses_run_params(conf_template_fname,conf_fname,workspace_dir,parallel_corpus,lm_file,src_lang,tgt_lang): 
+def create_synthetic_corpus_concatenated(src_fname,tgt_fname,parallel_dir,src_l,tgt_l,n_xlit=10,n_tun=1000):
+    """
+    Read the final synthesizede parallel corpus obtained from decoding with final paramters, which is in moses format 
+    Generate a single concatenated corpus from this. Set aside the last n_tun sentences for tuning and use the rest 
+    for training 
 
+    nxlit: number of transliterations to extract 
+    """
+
+    ## get the output from the transliteration system's training set decoding 
+    all_src_lines=None
+    with codecs.open(src_fname,'r','utf-8') as src_file: 
+        src_lines=[x.strip() for x in src_file.readlines()]
+
+    data=list(it.izip(src_lines,iterate_nbest_list(tgt_fname)))
+
+    ### training data 
+    train_src_file=codecs.open('{}/train.{}'.format(parallel_dir,src_l),'w','utf-8')
+    train_tgt_file=codecs.open('{}/train.{}'.format(parallel_dir,tgt_l),'w','utf-8')
+    train_score_file=codecs.open('{}/train.score'.format(parallel_dir),'w','utf-8')
+
+    for src,(sno,tgt) in data[:-n_tun]: 
+        for i,(j, xlit, _, score) in enumerate(tgt[:min(len(tgt),n_xlit)]):
+            train_src_file.write(u' '.join(src)+u'\n')
+            train_tgt_file.write(u' '.join(xlit)+u'\n')
+            train_score_file.write(str(score)+u'\n')
+
+    train_src_file.close()
+    train_tgt_file.close()
+    train_score_file.close()
+
+    ### tuning data 
+    tun_src_file=codecs.open('{}/tun.{}'.format(parallel_dir,src_l),'w','utf-8')
+    tun_tgt_file=codecs.open('{}/tun.{}'.format(parallel_dir,tgt_l),'w','utf-8')
+
+    ### take the best output for tuning 
+    for src,(sno,tgt) in data[-n_tun:]: 
+        j, xlit, _, score=tgt[0]
+        tun_src_file.write(u' '.join(src)+u'\n')
+        tun_tgt_file.write(u' '.join(xlit)+u'\n')
+
+    tun_src_file.close()
+    tun_tgt_file.close()
+
+def create_moses_run_params(conf_template_fname,conf_fname,workspace_dir,parallel_corpus,lm_file,src_lang,tgt_lang): 
     with codecs.open(conf_fname,'w','utf-8') as conf_file: 
-        conf_template=read_lines(conf_template_fname)
+        conf_template=''.join(read_lines(conf_template_fname))
         conf=conf_template.format(workspace_dir=workspace_dir,parallel_corpus=parallel_corpus,lm_file=lm_file,src_lang=src_lang,tgt_lang=tgt_lang)
         conf_file.write(conf)
 
+def create_moses_factored_run_params(conf_template_fname,conf_fname,workspace_dir,parallel_corpus,lm_file,factored_lm_dir,src_lang,tgt_lang): 
+    with codecs.open(conf_fname,'w','utf-8') as conf_file: 
+        conf_template=''.join(read_lines(conf_template_fname))
+        conf=conf_template.format(workspace_dir=workspace_dir,parallel_corpus=parallel_corpus,lm_file=lm_file,factored_lm_dir=factored_lm_dir,src_lang=src_lang,tgt_lang=tgt_lang)
+        conf_file.write(conf)
+
+def create_moses_ini_params(ini_template_fname,ini_fname,numfeatures,phrasetable,lmfname,lmorder): 
+    initfeatvalues=' '.join(['0.2']*numfeatures)
+    with codecs.open(ini_fname,'w','utf-8') as ini_file: 
+        ini_template=''.join(read_lines(ini_template_fname))
+        ini=ini_template.format(numfeatures=numfeatures,phrasetable=phrasetable,lmfname=lmfname,lmorder=lmorder,initfeatvalues=initfeatvalues)
+        ini_file.write(ini)
 
 if __name__=='__main__': 
     ### INDIC_NLP_RESOURCES environment variable must be set
     loader.load()
 
     command=sys.argv[1]
-    if command=='create_synthetic_corpus': 
-        create_synthetic_corpus(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],n_xlit=int(sys.argv[7]),n_tun=int(sys.argv[8]))
+    if command=='create_synthetic_corpus_split': 
+        create_synthetic_corpus_split(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],n_xlit=int(sys.argv[7]),n_tun=int(sys.argv[8]))
+    elif command=='create_synthetic_corpus_concatenated': 
+        create_synthetic_corpus_concatenated(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],n_xlit=int(sys.argv[7]),n_tun=int(sys.argv[8]))
+    elif command=='create_moses_run_params':        
+        create_moses_run_params(*sys.argv[2:])
+    elif command=='create_moses_factored_run_params':        
+        create_moses_factored_run_params(*sys.argv[2:])
+    elif command=='create_moses_ini_params':        
+        create_moses_ini_params(sys.argv[2],sys.argv[3],int(sys.argv[4]),sys.argv[5],sys.argv[6],int(sys.argv[7]))
+    else: 
+        print "Unknown command"
