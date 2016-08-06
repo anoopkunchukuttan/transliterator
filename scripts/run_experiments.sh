@@ -1,5 +1,8 @@
 #!/bin/bash 
 
+#########  Just a compilation of commands for experiments #### 
+##### You can ignore #######
+
 #### phonetic features related 
 
 ### create the phrase tables
@@ -267,19 +270,26 @@ PV_PROP='basic_type vowel_length vowel_strength vowel_status consonant_type arti
 #nohup ./supervised_stage_split.sh c_hi-kn_20_9.conf   > split_20_9_hi-kn.log   2>&1
 #nohup ./supervised_stage_split.sh c_kn-hi_20_9.conf   > split_20_9_kn-hi.log   2>&1 
 
-#nohup ./supervised_stage_concatenation.sh c_bn-hi_20_3.conf   > concat_20_9_bn-hi.log   2>&1 
-#nohup ./supervised_stage_concatenation.sh c_hi-kn_20_3.conf   > concat_20_9_hi-kn.log   2>&1
-#nohup ./supervised_stage_concatenation.sh c_kn-hi_20_3.conf   > concat_20_9_kn-hi.log   2>&1 
-#
-#### factored
+#nohup ./supervised_stage_concatenation.sh c_bn-hi_20_9.conf   > concat_20_9_bn-hi.log   2>&1 
+#nohup ./supervised_stage_concatenation.sh c_hi-kn_20_9.conf   > concat_20_9_hi-kn.log   2>&1
+#nohup ./supervised_stage_concatenation.sh c_kn-hi_20_9.conf   > concat_20_9_kn-hi.log   2>&1 
+
+
+#nohup ./supervised_stage_concatenation.sh c_en-hi_20_3.conf     > log/concat_20_3_en-hi.log   2>&1 
+
+nohup ./supervised_stage_concatenation.sh stage2_conf/c_ta-kn_20_3.conf   > log/concat_20_3_ta-kn.log   2>&1 
+#nohup ./supervised_stage_concatenation.sh stage2_conf/c_ta-kn_20_4_4.conf   > log/concat_20_4_4_ta-kn.log   2>&1 
+#nohup ./supervised_stage_concatenation.sh stage2_conf/c_ta-kn_20_9.conf     > log/concat_20_9_ta-kn.log   2>&1 
+#nohup ./supervised_stage_concatenation.sh stage2_conf/c_ta-kn_20_9_2.conf     > log/concat_20_9_2_ta-kn.log   2>&1 
+
+
+#nohup ./supervised_stage_concatenation.sh stage2_conf/c_hi-kn_20_4_4.conf   > log/concat_20_4_4_hi-kn.log   2>&1 
+#nohup ./supervised_stage_concatenation.sh stage2_conf/c_kn-hi_20_4_4.conf   > log/concat_20_4_4_kn-hi.log   2>&1 
+#nohup ./supervised_stage_concatenation.sh stage2_conf/c_bn-hi_20_4_4.conf   > log/concat_20_4_4_bn-hi.log   2>&1 
+
 #nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_bn-hi_20_4_4.conf > log/concat_20_4_4_bn-hi.log   2>&1 
 #nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_hi-kn_20_4_4.conf > log/concat_20_4_4_hi-kn.log   2>&1 
 #nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_kn-hi_20_4_4.conf > log/concat_20_4_4_kn-hi.log   2>&1 
-#
-#nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_bn-hi_20_9_2.conf > log/concat_20_9_2_bn-hi.log   2>&1 
-#nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_hi-kn_20_9_2.conf > log/concat_20_9_2_hi-kn.log   2>&1
-#nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_kn-hi_20_9_2.conf > log/concat_20_9_2_kn-hi.log   2>&1 
-#
 #nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_bn-hi_20_9.conf   > log/concat_20_9_bn-hi.log   2>&1 
 #nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_hi-kn_20_9.conf   > log/concat_20_9_hi-kn.log   2>&1
 #nohup ./supervised_stage_concatenation_factored.sh factored_conf/c_kn-hi_20_9.conf   > log/concat_20_9_kn-hi.log   2>&1 
@@ -307,28 +317,32 @@ config_dir=/home/development/anoop/experiments/unsupervised_transliterator/exper
 ########  `echo 20_3 20_3_2 20_3_3 20_4_3 20_4_4  20_7 20_7_2 20_9 20_9_2`
 ########  `echo kn-hi hi-kn kn-ta ta-kn bn-hi ta-hi hi-ta`
 
-#for lpair in `echo kn-ta`
+#for lpair in `echo en-hi`
 #do  
-#    for expn in `echo 20_7_2`
+#    for expn in `echo 20_9_2 20_4_4 20_3`
 #    do 
 #        echo "======= Training $lpair for experiment $expn ====== "  
 #        nohup ./ems.sh $config_dir/$lpair/${expn}_ems.config  > log/${lpair}_${expn}.log 2>&1 
 #    done 
 #done
-
+#
+#echo 'Stage 1 done'
+#
 ######## RERANKING
-#for lpair in `echo hi-kn kn-hi bn-hi`
+#for lpair in `echo en-hi`
 #do  
-#    for expn in `echo 20_3_word`
+#    for expn in `echo 20_9  20_9_2 20_4_4 20_3`
 #    do 
 #        echo "======= Training $lpair for experiment $expn ====== "  
 #        nohup ./rerank.sh $config_dir/$lpair/${expn}_ems.config  > log/${lpair}_${expn}.log 2>&1 
 #    done 
 #done
+#
+#echo 'Reranking done'
 
 ##########  DECODE-TRAINING
 #stage_2_corpus="/home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/stage_2_corpus/"
-#for lpair in `echo kn-hi hi-kn`
+#for lpair in `echo ta-kn`
 #do  
 #    for expn in `echo 20_3`
 #    do 
@@ -336,7 +350,8 @@ config_dir=/home/development/anoop/experiments/unsupervised_transliterator/exper
 #        nohup ./decode_training.sh   $config_dir/$lpair/${expn}_ems.config $stage_2_corpus/${lpair}/${expn}  > log/decode_training_${lpair}_${expn}.log 2>&1 
 #    done 
 #done
-
+#
+#echo 'Prepared stage 2 corpus'
 
 ###### run evaluation on ARJUN test set
 #model_dir_base="/home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/pb"
@@ -383,27 +398,27 @@ config_dir=/home/development/anoop/experiments/unsupervised_transliterator/exper
 #done 
 #
 
-###  Prepare data for en-hi
-data_dir=/home/development/anoop/experiments/unsupervised_transliterator/data/nonparallel/pb/
-src_lang=en
-tgt_lang=hi
-split='train'
-
-python en-hi_utilities.py filter_for_g2p  \
-    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.word.unfiltered \
-    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.word
-
-python en-hi_utilities.py convert_to_phonetisaurus_input_format \
-    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.word \
-    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.word 
-
-phonetisaurus-g2p --model=$G2PMODEL \
-    --input=$data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.word \
-    --isfile=true > \
-    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.phoneme  2> err
-
-python en-hi_utilities.py convert_phonetisaurus_to_xlit_format \
- $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.phoneme \
- $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phoneme \
- $data_dir/$src_lang-$tgt_lang/$split.$src_lang
-
+####  Prepare data for en-hi
+#data_dir=/home/development/anoop/experiments/unsupervised_transliterator/data/nonparallel/pb/
+#src_lang=en
+#tgt_lang=hi
+#split='train'
+#
+#python en-hi_utilities.py filter_for_g2p  \
+#    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.word.unfiltered \
+#    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.word
+#
+#python en-hi_utilities.py convert_to_phonetisaurus_input_format \
+#    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.word \
+#    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.word 
+#
+#phonetisaurus-g2p --model=$G2PMODEL \
+#    --input=$data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.word \
+#    --isfile=true > \
+#    $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.phoneme  2> err
+#
+#python en-hi_utilities.py convert_phonetisaurus_to_xlit_format \
+# $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phonetisaurus.phoneme \
+# $data_dir/$src_lang-$tgt_lang/$split.$src_lang.phoneme \
+# $data_dir/$src_lang-$tgt_lang/$split.$src_lang
+#

@@ -604,6 +604,10 @@ def compute_parallel_corpus_statistics(srcfname,tgtfname):
 
     print '{} {}'.format(mean,std)
 
+    print '{} target words out of {} longer than source'.format(len(filter(lambda x:x>1.0, ratio_list)),len(ratio_list))
+    print '{} target words out of {} shorter than source'.format(len(filter(lambda x:x<1.0, ratio_list)),len(ratio_list))
+    print '{} target words out of {} equal to source'.format(len(filter(lambda x:x==1.0, ratio_list)),len(ratio_list))
+
 def filter_brahminet_length_ratio(datadir,src,tgt,lratio,std):
    
     srcfile=codecs.open(datadir+'/train.{}'.format(src),'r','utf-8')

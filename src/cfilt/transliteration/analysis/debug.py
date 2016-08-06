@@ -12,8 +12,9 @@ import numpy as np
 import sys
 import itertools as it
 import pandas as pd
-import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 
 def read_lines(corpus_fname): 
@@ -129,7 +130,7 @@ def words_changed_atleast_once(log_dir):
 #    bitvec=[len(f)>=len(e) for f, e in it.izip(read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/parallel/pb/bn-hi/train.bn'),read_monolingual_corpus('/home/development/anoop/experiments/unsupervised_transliterator/data/parallel/pb/bn-hi/train.hi' ))]
 #    print sum(bitvec) 
 
-def plot_confusion_matrix(confusion_mat_fname,tgt='hi'): 
+def plot_confusion_matrix(confusion_mat_fname,plot_fname,tgt='hi'): 
     """
     Plots a heat map of the confusion matrix of character alignments. 
     
@@ -181,7 +182,8 @@ def plot_confusion_matrix(confusion_mat_fname,tgt='hi'):
     plt.xticks(np.arange(0,len(col_names))+0.5,col_names)
     plt.yticks(np.arange(0,len(row_names))+0.5,row_names)
     
-    plt.show()
+    #plt.show()
+    plt.savefig(plot_fname)
     plt.close()
     
 def find_top_errors(confusion_mat_fname,nerr=5):
@@ -295,7 +297,7 @@ def debug_training(log_dir):
 
 if __name__=='__main__': 
     ### INDIC_NLP_RESOURCES environment variable must be set
-    #loader.load()
+    loader.load()
 
-    plot_confusion_matrix(sys.argv[1])
+    plot_confusion_matrix(*sys.argv[1:])
     pass 

@@ -260,7 +260,7 @@ class UnsupervisedTransliteratorTrainer:
                 src_v=None
                 if len(f_sym)==1: 
                     # single character  (1-1 mappings)
-                    src_v=english_scripts.get_phonetic_feature_vector(f_sym,src)
+                    src_v=english_script.get_phonetic_feature_vector(f_sym,src)
                 else: 
                     # 2 characters (1-2 mappings)
                     src_v_0=english_script.get_phonetic_feature_vector(f_sym[0],src)
@@ -338,7 +338,7 @@ class UnsupervisedTransliteratorTrainer:
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
 
         elif  self._initmethod=='en_indic_phonetic_mapping':
-            alpha=self._generate_en_indic_hyperparams(self._initparams)
+            alpha=self._generate_en_indic_phonetic_hyperparams(self._initparams)
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
 
@@ -652,6 +652,7 @@ class UnsupervisedTransliteratorTrainer:
         """
         """
         print "Initializing unsupervised learning" 
+
         decoder_params=self._config.get('decoder_params',{})
         topn=10
         self._initialize_unsupervised_training(f_input_words,e_char_set)
