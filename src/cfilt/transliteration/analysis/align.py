@@ -144,3 +144,18 @@ if __name__ == '__main__':
     # create confusion matrix 
     confusion_df=create_confusion_matrix(alignments)
     confusion_df.to_pickle(outdir+'/confusion_mat{}.pickle'.format(reranked))
+
+
+    
+#src=hi
+#tgt=kn
+#
+#
+#### 20_4_4
+##python align.py /home/development/anoop/experiments/unsupervised_transliterator/data/nonparallel/pb/$src-$tgt/test.$tgt /home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/pb/20_4_4/$src-$tgt/evaluation/test.reranked.$tgt $tgt /home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/pb/20_4_4/$src-$tgt/evaluation/   reranked
+#python debug.py /home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/pb/20_4_4/$src-$tgt/evaluation/confusion_mat.reranked.pickle /home/development/anoop/experiments/unsupervised_transliterator/experiments/nonparallel/pb/20_4_4/$src-$tgt/evaluation/confusion_mat.reranked.png $tgt
+#
+#### supervised
+##python align.py /home/development/anoop/experiments/unsupervised_transliterator/data/nonparallel/pb/$src-$tgt/test.$tgt /home/development/anoop/experiments/unsupervised_transliterator/experiments/parallel_news_2015_indic/pb/$src-$tgt/evaluation/test.$tgt $tgt /home/development/anoop/experiments/unsupervised_transliterator/experiments/parallel_news_2015_indic/pb/$src-$tgt/evaluation/
+##
+##python debug.py /home/development/anoop/experiments/unsupervised_transliterator/experiments/parallel_news_2015_indic/pb/$src-$tgt/evaluation//confusion_mat.pickle /home/development/anoop/experiments/unsupervised_transliterator/experiments/parallel_news_2015_indic/pb/$src-$tgt/evaluation/confusion_mat.png $tgt
