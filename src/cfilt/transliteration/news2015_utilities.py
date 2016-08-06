@@ -604,6 +604,10 @@ def compute_parallel_corpus_statistics(srcfname,tgtfname):
 
     print '{} {}'.format(mean,std)
 
+    print '{} target words out of {} longer than source'.format(len(filter(lambda x:x>1.0, ratio_list)),len(ratio_list))
+    print '{} target words out of {} shorter than source'.format(len(filter(lambda x:x<1.0, ratio_list)),len(ratio_list))
+    print '{} target words out of {} equal to source'.format(len(filter(lambda x:x==1.0, ratio_list)),len(ratio_list))
+
 def filter_brahminet_length_ratio(datadir,src,tgt,lratio,std):
    
     srcfile=codecs.open(datadir+'/train.{}'.format(src),'r','utf-8')
@@ -758,6 +762,63 @@ def count_common_msr_corpus(en1_fname,en2_fname):
 
             print len(en1_words.intersection(en2_words))
 
+def extract_exclusive_msr_corpus(c0_dir, c1_dir, c0_lang, c1_lang, outdir ): 
+
+    factory=IndicNormalizerFactory()
+    l0_normalizer=factory.get_normalizer(lang_code_mapping[c0_lang])
+    l1_normalizer=factory.get_normalizer(lang_code_mapping[c1_lang])
+
+    data_cache=defaultdict(lambda : [set(),set()])
+
+    # read corpus 0
+    en0_f=codecs.open(c0_dir+'/train.En','r','utf-8')
+    l0_f=codecs.open(c0_dir+'/train.'+c0_lang,'r','utf-8')
+
+    for en_l,c_l in itertools.izip(iter(en0_f),iter(l0_f)): 
+        data_cache[en_l.strip()][0].add(l0_normalizer.normalize(c_l.strip()))
+
+    en0_f.close()
+    l0_f.close()
+
+    # read corpus 1                
+    en1_f=codecs.open(c1_dir+'/train.En','r','utf-8')
+    l1_f=codecs.open(c1_dir+'/train.'+c1_lang,'r','utf-8')
+
+    for en_l,c_l in itertools.izip(iter(en1_f),iter(l1_f)): 
+        data_cache[en_l.strip()][1].add(l1_normalizer.normalize(c_l.strip()))
+
+    en1_f.close()
+    l1_f.close()
+
+    # write the common data
+
+    # from language en to c0 
+    xor_f=codecs.open(outdir+'/train.{}-{}'.format('En',c0_lang),'w','utf-8')
+    xor_list=[]
+    for en_l, other_l_lists in data_cache.iteritems(): 
+        if (len(other_l_lists[0]) >0 and len(other_l_lists[1]) == 0): 
+            other_l_lists_w=[u''.join(x.split()) for x in other_l_lists[0]]
+            xor_list.append(u''.join(en_l.split()) + u'|' + u'^'.join(other_l_lists_w)+u'\n')
+
+    random.shuffle(xor_list)
+    for wr in xor_list: 
+        xor_f.write(wr)
+
+    xor_f.close()
+
+    # from language en to c1 
+    xor_f=codecs.open(outdir+'/train.{}-{}'.format('En',c1_lang),'w','utf-8')
+    xor_list=[]
+    for en_l, other_l_lists in data_cache.iteritems(): 
+        if (len(other_l_lists[0]) ==0 and len(other_l_lists[1]) > 0): 
+            other_l_lists_w=[u''.join(x.split()) for x in other_l_lists[1]]
+            xor_list.append(u''.join(en_l.split()) + u'|' + u'^'.join(other_l_lists_w)+u'\n')
+
+    random.shuffle(xor_list)
+    for wr in xor_list: 
+        xor_f.write(wr)
+
+    xor_f.close()
 
 ### Corpus management methods 
 
@@ -837,6 +898,63 @@ def create_train_tun(datadir,src,tgt,tun_size='500'):
     os.unlink(datadir+'/train+tun.{}'.format(tgt))
     os.unlink(datadir+'/train+tun.{}'.format('id'))
 
+def create_train_tun_test(datadir,src,tgt,tun_size='1000',test_size='1500'):
+
+    tun_size=int(tun_size)
+    test_size=int(test_size)
+
+    # rename files 
+    os.rename(datadir+'/train.{}'.format(src),datadir+'/train+tun.{}'.format(src))
+    os.rename(datadir+'/train.{}'.format(tgt),datadir+'/train+tun.{}'.format(tgt))
+
+    # read original training file     
+    srcfile=codecs.open(datadir+'/train+tun.{}'.format(src),'r','utf-8')
+    tgtfile=codecs.open(datadir+'/train+tun.{}'.format(tgt),'r','utf-8')
+
+    dataset=list( itertools.izip( iter(srcfile) , iter(tgtfile) ) )
+    random.shuffle(dataset)
+    print len(dataset)
+
+    srcfile.close()
+    tgtfile.close()
+
+    # create new training file 
+    trainsrcfile=codecs.open(datadir+'/train.{}'.format(src),'w','utf-8')
+    traintgtfile=codecs.open(datadir+'/train.{}'.format(tgt),'w','utf-8')
+
+    for srcline,tgtline in dataset[test_size+tun_size:]: 
+        trainsrcfile.write(srcline)
+        traintgtfile.write(tgtline)
+
+    trainsrcfile.close()
+    traintgtfile.close()
+
+    # create new tuning file 
+    tunsrcfile=codecs.open(datadir+'/tun.{}'.format(src),'w','utf-8')
+    tuntgtfile=codecs.open(datadir+'/tun.{}'.format(tgt),'w','utf-8')
+
+    for srcline,tgtline in dataset[test_size:test_size+tun_size]: 
+        tunsrcfile.write(srcline)
+        tuntgtfile.write(tgtline)
+
+    tunsrcfile.close()
+    tuntgtfile.close()
+
+    # create new test file 
+    testsrcfile=codecs.open(datadir+'/test.{}'.format(src),'w','utf-8')
+    testtgtfile=codecs.open(datadir+'/test.{}'.format(tgt),'w','utf-8')
+
+    for srcline,tgtline in dataset[:test_size]: 
+        testsrcfile.write(srcline)
+        testtgtfile.write(tgtline)
+
+    testsrcfile.close()
+    testtgtfile.close()
+
+    # unlink file 
+    os.unlink(datadir+'/train+tun.{}'.format(src))
+    os.unlink(datadir+'/train+tun.{}'.format(tgt))
+
 def postprocess_nbest_list(nbest_fname, systemtype): 
     #parameters to pipeline elements 
     order=2 
@@ -873,6 +991,13 @@ def convert_to_1best_format(infname,outfname):
     with codecs.open(outfname,'w','utf-8') as outfile:
         for sent_no, parsed_lines in iterate_nbest_list(infname): 
             outfile.write(parsed_lines[0][1].strip()+u'\n')
+
+def convert_to_kbest_format(infname,outfname,k_str):
+    k=int(k_str)
+    with codecs.open(outfname,'w','utf-8') as outfile:
+        for sent_no, parsed_lines in iterate_nbest_list(infname): 
+            for i in xrange(0,k): 
+                outfile.write( u'{} ||| {} ||| {} ||| {}\n'.format( *parsed_lines[i]  ) )
 
 def correct_vowels(nbest_fname,lang): 
     """
@@ -1071,8 +1196,10 @@ if __name__=='__main__':
         'randomize_and_select':randomize_and_select,
         'count_common_msr_corpus':count_common_msr_corpus,
         'extract_common_msr_corpus':extract_common_msr_corpus,
+        'extract_exclusive_msr_corpus':extract_exclusive_msr_corpus,
 
         'create_train_tun':create_train_tun,
+        'create_train_tun_test':create_train_tun_test,
 
         'add_markers_corpus':add_markers_corpus,
         'remove_markers':remove_markers,
@@ -1080,6 +1207,7 @@ if __name__=='__main__':
         'postprocess_nbest_list':postprocess_nbest_list,
         'convert_to_nbest_format':convert_to_nbest_format,
         'convert_to_1best_format':convert_to_1best_format,
+        'convert_to_kbest_format':convert_to_kbest_format,
 
         'correct_vowels':correct_vowels,
 

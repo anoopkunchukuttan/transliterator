@@ -1,22 +1,22 @@
 import itertools as it
-import codecs, sys, pickle, os
-import pprint 
+import pickle, os
 from collections import defaultdict
 import numpy as np, math
-import pandas as pd
 import random
-import yaml 
 import copy
-
-import srilm
 
 from cfilt.transliteration.decoder import *
 from cfilt.transliteration.parallel_decoder import *
 from cfilt.transliteration.utilities import *
 from cfilt.transliteration.char_mappings import *
+from cfilt.transliteration.reranker import * 
 
 from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTransliterator 
 from indicnlp import langinfo 
+from indicnlp.script import indic_scripts
+from indicnlp.script import english_script
+
+from cfilt.transliteration import phonetic_sim 
 
 # Alignment is a list of 'charseq_pairs'
 # represented as 'src_seq|tgtseq'
@@ -41,7 +41,7 @@ from indicnlp import langinfo
     
 class UnsupervisedTransliteratorTrainer: 
 
-    def __init__(self, config_params, lm_model=None):
+    def __init__(self, config_params):
         
         ############ load config file 
         self._config=config_params
@@ -72,9 +72,6 @@ class UnsupervisedTransliteratorTrainer:
         # Parameter values in the previous iteration 
         self.prev_param_values=None
 
-        ############# Language model 
-        self._lm_model=lm_model
-
         #############  Hyper parameters 
         # initialize hyper parameters 
         # Each of the P(f|e) distributions is governed by a Dirichlet Prior alpha[e,f] for each value for e and f
@@ -98,46 +95,6 @@ class UnsupervisedTransliteratorTrainer:
                 raise Exception('No initialization method specified')
         
             self._initmethod,self._initparams=config_params['initialization'].iteritems().next()
-
-#    def print_obj(self): 
-#
-#        print("xxx Printing EM instance xxx")
-#        print("Symbol mappings for F: ")
-#        for f_id in range(len(self._translit_model.f_id_sym_map)): 
-#            print u'{} {}'.format(f_id,self._translit_model.f_id_sym_map[f_id]).encode('utf-8')
-#
-#        print("Symbol mappings for E: ")
-#        for e_id in range(len(self._translit_model.e_id_sym_map)): 
-#            print u'{} {}'.format(e_id,self._translit_model.e_id_sym_map[e_id]).encode('utf-8')
-#
-#        #print("Param Occurence Info: ")
-#        #for eid in xrange(len(self._translit_model.e_sym_id_map)): 
-#        #    for fid in xrange(len(self._translit_model.f_sym_id_map)): 
-#        #        l=self.param_occurence_info[eid][fid]
-#        #        if len(l)>0:
-#        #            print 'eid={} fid={}'.format(eid,fid)
-#        #            pprint.pprint(l)
-#
-#        #print("Alignments: ")
-#        ## gather transliteration occurrence info
-#        #for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-#        #    for aln_idx,align in enumerate(alignments): 
-#        #        print 'wp_idx={} aln_idx={}'.format(wp_idx,aln_idx)
-#        #        pprint.pprint(align)
-#        #        #for charseq_pair in align: 
-#        #        #    print[charseq_pair[0]][charseq_pair[1]].append([wp_idx,aln_idx])
-#
-#    def print_params(self): 
-#        #print("Alignment Weights: ")
-#        #pprint.pprint(self.wpairs_weights)
-#       
-#        print("Transliteration Probabilities")
-#        #for e_id in range(len(self._translit_model.e_sym_id_map)): 
-#        #    for f_id in range(len(self._translit_model.f_sym_id_map)): 
-#        #        #print u"P({}|{})={}".format(self._translit_model.f_id_sym_map[f_id],self._translit_model.e_id_sym_map[e_id],self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
-#        #        print u"P({}|{})={}".format(f_id,e_id,self._translit_model.param_values[e_id,f_id]).encode('utf-8') 
-#        #pprint.pprint(self._translit_model.param_values)
-        
 
     def _generate_alignments(self,f_word,e_word):
         """
@@ -181,6 +138,7 @@ class UnsupervisedTransliteratorTrainer:
                 # create 'e' sym to id mapping
                 # TODO: check if this works correctly in the unsupervised case
                 if es not in self._translit_model.e_sym_id_map: 
+                    print u'Warning: unkown e symbol found: {}'.format(es).encode('utf-8')
                     self._translit_model.add_e_sym(es)
                 es_id=  self._translit_model.e_sym_id_map[es] 
 
@@ -217,7 +175,7 @@ class UnsupervisedTransliteratorTrainer:
 
     def _generate_en_indic_hyperparams(self,params):
 
-        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))*params['scale_factor_mapping_exists']
 
         ## get mapping rules 
         mapping_rules=filter_by_val_len(remove_constraints(en_il_rules))
@@ -233,7 +191,6 @@ class UnsupervisedTransliteratorTrainer:
                 for f_sym_x in mapping_rules[offset]:
                     if f_sym_x in self._translit_model.f_sym_id_map: 
                         alpha[e_id,self._translit_model.f_sym_id_map[f_sym_x]]=params['base_measure_mapping_exists']
-                        alpha[e_id,:]*=params['scale_factor_mapping_exists']
 
         return alpha
 
@@ -263,7 +220,7 @@ class UnsupervisedTransliteratorTrainer:
         #                self._translit_model.add_f_sym(f_with_halant)
 
         ## initialize hyperparams 
-        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))*params['scale_factor_mapping_exists']
 
         for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
             offset= langinfo.get_offset(e_sym,tgt)
@@ -285,8 +242,68 @@ class UnsupervisedTransliteratorTrainer:
                         if f_with_halant in self._translit_model.f_sym_id_map: 
                             alpha[e_id,self._translit_model.f_sym_id_map[f_with_halant]]=params['base_measure_mapping_exists']
 
-                    alpha[e_id,:]*=params['scale_factor_mapping_exists']
+        return alpha 
 
+    def _generate_en_indic_phonetic_hyperparams(self,params):
+
+        src=params['src']
+        tgt=params['tgt']
+        sim_func=phonetic_sim.sim1 if  params.get('sim_func','sim1')=='sim1' else phonetic_sim.cosine
+
+        ## initialize hyperparams 
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+
+        for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
+            tgt_v=indic_scripts.get_phonetic_feature_vector(e_sym,tgt)
+
+            for f_id, f_sym in self._translit_model.f_id_sym_map.iteritems(): 
+                src_v=None
+                if len(f_sym)==1: 
+                    # single character  (1-1 mappings)
+                    src_v=english_script.get_phonetic_feature_vector(f_sym,src)
+                else: 
+                    # 2 characters (1-2 mappings)
+                    src_v_0=english_script.get_phonetic_feature_vector(f_sym[0],src)
+                    src_v_1=english_script.get_phonetic_feature_vector(f_sym[1],src)
+                    src_v=phonetic_sim.accumulate_vectors(src_v_0,src_v_1)
+
+                alpha[e_id,f_id]=sim_func(src_v,tgt_v)
+
+            alpha_sums=np.sum(alpha, axis=1)
+            alpha=(alpha.transpose()/alpha_sums).transpose()
+            alpha*=params['scale_factor']
+                            
+        return alpha 
+
+    def _generate_indic_phonetic_hyperparams(self,params):
+
+        src=params['src']
+        tgt=params['tgt']
+        sim_func=phonetic_sim.sim1 if  params.get('sim_func','sim1')=='sim1' else phonetic_sim.cosine
+
+        ## initialize hyperparams 
+        alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
+
+        for e_id, e_sym in self._translit_model.e_id_sym_map.iteritems(): 
+            tgt_v=indic_scripts.get_phonetic_feature_vector(e_sym,tgt)
+
+            for f_id, f_sym in self._translit_model.f_id_sym_map.iteritems(): 
+                src_v=None
+                if len(f_sym)==1: 
+                    # single character  (1-1 mappings)
+                    src_v=indic_scripts.get_phonetic_feature_vector(f_sym,src)
+                else: 
+                    # 2 characters (1-2 mappings)
+                    src_v_0=indic_scripts.get_phonetic_feature_vector(f_sym[0],src)
+                    src_v_1=indic_scripts.get_phonetic_feature_vector(f_sym[1],src)
+                    src_v=phonetic_sim.accumulate_vectors(src_v_0,src_v_1)
+
+                alpha[e_id,f_id]=sim_func(src_v,tgt_v)
+
+            alpha_sums=np.sum(alpha, axis=1)
+            alpha=(alpha.transpose()/alpha_sums).transpose()
+            alpha*=params['scale_factor']
+                            
         return alpha 
 
     def _init_param_values(self):
@@ -310,8 +327,18 @@ class UnsupervisedTransliteratorTrainer:
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
 
+        elif  self._initmethod=='indic_phonetic_mapping':
+            alpha=self._generate_indic_phonetic_hyperparams(self._initparams)
+            alpha_sums=np.sum(alpha, axis=1)
+            self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
+
         elif  self._initmethod=='en_il_mapping':
             alpha=self._generate_en_indic_hyperparams(self._initparams)
+            alpha_sums=np.sum(alpha, axis=1)
+            self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
+
+        elif  self._initmethod=='en_indic_phonetic_mapping':
+            alpha=self._generate_en_indic_phonetic_hyperparams(self._initparams)
             alpha_sums=np.sum(alpha, axis=1)
             self._translit_model.param_values=(alpha.transpose()/alpha_sums).transpose()
 
@@ -334,8 +361,14 @@ class UnsupervisedTransliteratorTrainer:
             elif self._priormethod=='indic_mapping':
                 self._alpha=self._generate_indic_hyperparams(self._priorparams)
 
+            elif self._priormethod=='indic_phonetic_mapping':
+                self._alpha=self._generate_indic_phonetic_hyperparams(self._priorparams)
+
             elif  self._initmethod=='en_il_mapping':
                 self._alpha=self._generate_en_indic_hyperparams(self._priorparams)
+
+            elif  self._initmethod=='en_indic_phonetic_mapping':
+                self._alpha=self._generate_en_indic_phonetic_hyperparams(self._priorparams)
 
             elif self._priormethod=='add_one_smoothing':
                 self._alpha=np.ones((len(self._translit_model.e_sym_id_map),len(self._translit_model.f_sym_id_map)))
@@ -508,51 +541,20 @@ class UnsupervisedTransliteratorTrainer:
                                             np.ones((self._alpha.shape[0],n_new_f_chars))  ),
                                         axis=1)
 
-    #def _prepare_corpus_unsupervised(self,word_triplets, append=True): 
-    #    """
-    #      symbol mappings have already been created using '_initialize_unsupervised_training' 
-
-    #      every character sequence in the corpus can be uniquely addressed as: 
-    #      corpus[0][word_pair_idx][align_idx][aln_point_idx]
-    #
-    #      every weight can be indexed as: 
-    #      corpus[1][word_pair_idx][align_idx]
-    #
-    #    """
-    #    self.wpairs_aligns=[]
-    #    self.wpairs_weights=[]
-    #
-    #    for f,e,e_prev in word_triplets: 
-    #        alignments=self._generate_alignments(f,e)
-    #        if len(alignments)>0:
-    #            self.wpairs_aligns.append(alignments)
-    #            self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
-    #        else: 
-    #            print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
-
-    #    self.wpairs_eword_weights=[1.0]*len(self.wpairs_aligns)
-
-    #    self.param_occurence_info=defaultdict(lambda :defaultdict(list))
-   
-    #    # gather transliteration occurrence info
-    #    for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-    #        for aln_idx,align in enumerate(alignments): 
-    #            for es_id, fs_id in align: 
-    #                self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
-    
     def _prepare_corpus_unsupervised(self,word_triplets,append): 
         """
-          symbol mappings have already been created using '_initialize_unsupervised_training' 
-
-          every character sequence in the corpus can be uniquely addressed as: 
-          corpus[0][word_pair_idx][align_idx][aln_point_idx]
-    
-          every weight can be indexed as: 
-          corpus[1][word_pair_idx][align_idx]
-    
+           reuses weights from previous iteration
         """
+      
+        if not self._config.get('reuse_alignment_weights',False):
+            # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
+            self.wpairs_aligns=[]
+            self.wpairs_weights=[]
+            append=True
+
         if append:
-            for widx, (f,e,e_prev) in enumerate(word_triplets): 
+            for widx, (f,e_cands,e_prev_cands) in enumerate(word_triplets): 
+                e, escore=e_cands[0]
                 alignments=self._generate_alignments(f,e)
                 if len(alignments)>0:
                     self.wpairs_aligns.append(alignments)
@@ -560,7 +562,9 @@ class UnsupervisedTransliteratorTrainer:
                 else: 
                     print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
         else:                         
-            for widx, (f,e,e_prev) in enumerate(word_triplets): 
+            for widx, (f,e_cands,e_prev_cands) in enumerate(word_triplets): 
+                e,escore=e_cands[0]
+                e_prev, eprevscore=e_prev_cands[0]
                 if e!=e_prev:
                     alignments=self._generate_alignments(f,e)
                     if len(alignments)>0:
@@ -588,44 +592,18 @@ class UnsupervisedTransliteratorTrainer:
         N=-min(e_scores)+1.0
         e_scores=[ (N+score)/(len(e_scores)*N+sum(e_scores)) for score in e_scores ]
         return zip(e_words,e_scores)
-
-#    def _prepare_corpus_unsupervised_topn(self,word_triplets, topn, append=True): 
-#        """
-#    
-#        """
-#        self.wpairs_aligns=[]
-#        self.wpairs_weights=[]
-#        self.wpairs_eword_weights=[]
-#   
-#        # normalize top-k scores 
-#        input_words= [ f for f, e_cands in word_triplets ]
-#        translation_outputs= [ e_cands for f, e_cands in word_triplets ]
-#        translation_outputs=[ self._normalize_topn_scores(x) for x in translation_outputs]
-#        word_triplets=list(it.izip(input_words,translation_outputs))
-#
-#        # generate alignment information
-#        for f,e_cands in word_triplets: 
-#            for e, score in e_cands: 
-#                alignments=self._generate_alignments(f,e)
-#                if len(alignments)>0:
-#                    self.wpairs_aligns.append(alignments)
-#                    self.wpairs_weights.append( [1.0/float( len(alignments) )] *  len(alignments)  )
-#                    self.wpairs_eword_weights.append(score)
-#                else: 
-#                    print u"No alignments from word pair: {} {}".format(''.join(f),''.join(e)).encode('utf-8') 
-#
-#        # gather transliteration occurrence info
-#        self.param_occurence_info=defaultdict(lambda :defaultdict(list))
-#
-#        for wp_idx,alignments in enumerate(self.wpairs_aligns): 
-#            for aln_idx,align in enumerate(alignments): 
-#                for es_id, fs_id in align: 
-#                    self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
     
     def _prepare_corpus_unsupervised_topn(self,word_triplets, topn, append=True): 
         """
     
         """
+        if not self._config.get('reuse_alignment_weights',False):
+            # NOTE: Uncomment this block if alignment weights should not be reused across iterations 
+            self.wpairs_aligns=[]
+            self.wpairs_weights=[]
+            self.wpairs_eword_weights=[]
+            append=True
+
         # generate alignment information
         if append:
             ## first time
@@ -670,17 +648,21 @@ class UnsupervisedTransliteratorTrainer:
                 for es_id, fs_id in align: 
                     self.param_occurence_info[es_id][fs_id].append([wp_idx,aln_idx])
     
-    def em_unsupervised_train(self,f_input_words,e_char_set): 
+    def em_unsupervised_train(self,f_input_words,e_char_set,lm_model,lm_model_rerank=None): 
         """
         """
         print "Initializing unsupervised learning" 
-        topn=5
+
+        decoder_params=self._config.get('decoder_params',{})
+        topn=10
         self._initialize_unsupervised_training(f_input_words,e_char_set)
+
+        ## Initialize Reranker
+        rr=ReRanker(lm_model_rerank,lm_model)
 
         niter=0
         output_words=None
         append=True
-        
 
         self._debug_log(niter)
 
@@ -690,10 +672,31 @@ class UnsupervisedTransliteratorTrainer:
             ## decode: approximate marginalization over all e strings by maximization
 
             ### >>> Simple 1-best candidate based training (1)
+
             print "Parallel Decoding for EM"
-            prev_outputs=output_words if output_words is not None else ['']*len(f_input_words)
-            output_words=parallel_decode(self._translit_model, self._lm_model, f_input_words)
-            word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+            if not self._config.get('rerank_decode_step',False):
+                # Implementation 1: bigram language model with top-1 candidate
+                prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
+                output_words=parallel_decode(self._translit_model, lm_model, f_input_words, decoder_params)
+                output_words=[ [(x,1.0)] for x in output_words ]
+                word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+
+                # Implementation 2: bigram language model with top-1 candidate (but using the top-k decoder)
+                #                   Effectively same as Implementation 1
+                #prev_outputs=output_words if output_words is not None else [ [ ('',1.0)  ] ]*len(f_input_words)
+                #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 1, decoder_params)
+                #output_words=[ self._normalize_topn_scores(x) for x in output_words]
+                #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
+            
+            else: 
+                # Implementation 3: bigram language model with top-k candidates
+                #                   with reranking of top-k candidates with n-gram LM, and then taking the top-1 candidate subsequently
+                prev_outputs=output_words if output_words is not None else [ [ ('',0.1)  ]*10 ]*len(f_input_words)
+                output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, 10, decoder_params)
+                print "Rerank outputs"
+                output_words=[ rr.rerank_candidates(x) for x in output_words]  
+                output_words=[ self._normalize_topn_scores(x) for x in output_words]
+                word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 
             print "Preparing corpus"
             self._prepare_corpus_unsupervised(word_triplets,append)
@@ -701,8 +704,12 @@ class UnsupervisedTransliteratorTrainer:
 
             #### >>> top-k candidate based training (without updating alignment probabilities ie not using e-step)
             #print "Parallel Decoding for EM"
+            ## Implementation 4: bigram language model with top-k candidates, whose weights are used in subsequent m-step 
+            ## Could also rerank the candidates with a n-gram LM
             #prev_outputs=output_words if output_words is not None else [ [ ('',1.0/float(topn))  ]*topn ]*len(f_input_words)
-            #output_words=parallel_decode_topn(self._translit_model, self._lm_model, f_input_words, topn)
+            #output_words=parallel_decode_topn(self._translit_model, lm_model, f_input_words, topn, decoder_params)
+            ##print "Rerank outputs"
+            ##output_words=[ rr.rerank_candidates(x) for x in output_words]  
             #output_words=[ self._normalize_topn_scores(x) for x in output_words]
             #word_triplets=list(it.izip( f_input_words , output_words, prev_outputs ) )
 

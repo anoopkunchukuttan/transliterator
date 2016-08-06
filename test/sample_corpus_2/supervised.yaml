@@ -16,13 +16,6 @@ allowed_mappings:
     - 1 
     - 2 
 
-## Whether alignment weights computed by e-step  should be used in next iteration
-reuse_alignment_weights: False
-
-## After decoding, should the candidates transliterations be decoded using a higher order language model.
-## This is to be used when the baseline language model that the decoder uses is a bigram language model 
-rerank_decode_step: False
-
 ## EM parameter initialization
 # Optional
 # one of random/dirichlet/uniform
@@ -35,26 +28,26 @@ initialization:
     ### uniform 
     #uniform: 
     ### based on rule based mapping for Indic scripts 
-    #indic_mapping:
-    #     scale_factor_mapping_exists: 10.0
-    #     base_measure_mapping_exists: 1000.0    
-    #     src: pa
-    #     tgt: hi
+    indic_mapping:
+         scale_factor_mapping_exists: 10.0
+         base_measure_mapping_exists: 1000.0    
+         src: bn
+         tgt: hi
     
     ### based on phonetic mapping for Indic scripts 
     #indic_phonetic_mapping:
     #     scale_factor: 10.0
-    #     #sim_funct: sim1 (or cosine)
-    #     src: pa
+    #     #similarity_function: 
+    #     src: bn
     #     tgt: hi
     
-    ## based on rule based mapping for English to Indic scripts 
-    en_il_mapping:
-         scale_factor_mapping_exists: 0.01
-         base_measure_mapping_exists: 100.0    
-         upper_case:     
-         src: en
-         tgt: hi
+    ### based on rule based mapping for English to Indic scripts 
+    #en_il_mapping:
+    #     scale_factor_mapping_exists: 0.01
+    #     base_measure_mapping_exists: 100.0    
+    #     upper_case:     
+    #     src: en
+    #     tgt: hi
     
 
 ## Dirichlet prior for transliteration probabilities     
@@ -71,22 +64,22 @@ prior_config:
     #indic_mapping:
     #     scale_factor_mapping_exists: 10.0
     #     base_measure_mapping_exists: 1000.0    
-    #     src: pa
+    #     src: bn
     #     tgt: hi
     
-    ### based on phonetic mapping for Indic scripts 
-    #indic_phonetic_mapping:
-    #     scale_factor: 10.0
-    #     #sim_funct: sim1 (or cosine)
-    #     src: pa
-    #     tgt: hi
-    
-    ## based on rule based mapping for English to Indic scripts 
-    en_il_mapping:
-         scale_factor_mapping_exists: 0.01
-         base_measure_mapping_exists: 100.0    
-         src: en
+    ## based on phonetic mapping for Indic scripts 
+    indic_phonetic_mapping:
+         scale_factor: 10.0
+         #similarity_function: 
+         src: bn
          tgt: hi
+    
+    ### based on rule based mapping for English to Indic scripts 
+    #en_il_mapping:
+    #     scale_factor_mapping_exists: 0.01
+    #     base_measure_mapping_exists: 100.0    
+    #     src: en
+    #     tgt: hi
          
     ### add one smooting
     #add_one_smoothing:
@@ -94,5 +87,5 @@ prior_config:
 ##  The debug log directory
 ## Optional
 ## No log generated if this key is absent 
-log_dir: /home/development/anoop/experiments/unsupervised_transliterator/src/transliterator/test/sample_workspace/log
+log_dir: /home/development/anoop/experiments/unsupervised_transliterator/src/transliterator/test/sample_workspace_2/log
         

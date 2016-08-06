@@ -1,0 +1,12 @@
+# Markov order of the language model 
+lm_order: 2 
+
+# exponent power to stretch  the transliteration/channel probabilties
+prob_stretch_power: 1.0
+
+# character penalty, which penalizes shorter transliterations   
+length_control_add: 0.0
+
+# max_beam_prune_size
+max_beam_prune_size: 100 
+    

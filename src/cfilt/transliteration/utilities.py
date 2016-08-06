@@ -1,6 +1,7 @@
 import itertools as it
 import codecs
 import math
+import numpy as np
 import yaml
 
 import srilm
@@ -9,6 +10,10 @@ ZERO_LOG_PROB_REPLACEMENT=-700.0
 
 def log_z(x): 
     return  math.log(x) if x>0.0 else ZERO_LOG_PROB_REPLACEMENT
+
+numpy_log_z=np.vectorize(log_z)
+
+LOG_E_BASE10=np.log10(np.e)
 
 def load_lm_model(lm_fname, order=2): 
     """
