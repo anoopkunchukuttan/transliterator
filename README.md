@@ -1,6 +1,6 @@
 # IITB Unsupervised Transliterator
 
-** Documentation is not yet complete, please mail me if you need information about using the system. The documentation should be complete in a week ** 
+**Documentation is not yet complete, please mail me if you need information about using the system. The documentation should be complete in a week** 
 
 ## Pre-requisites
 
