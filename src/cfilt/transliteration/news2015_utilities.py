@@ -356,7 +356,7 @@ def iterate_moses_nbest_op(src_fname,tgt_fname,id_fname,topk=10):
                 yield [ 
                         c_id[0], 
                         csrc_text, 
-                        enumerate ( [ u' '.join(l) for l in zip(*xlists) ], 1 ) 
+                        list(enumerate ( [ u' '.join(l) for l in zip(*xlists) ], 1 ))
                       ]  
 
             ## create new record
@@ -375,7 +375,7 @@ def iterate_moses_nbest_op(src_fname,tgt_fname,id_fname,topk=10):
         yield [ 
                 c_id[0], 
                 csrc_text, 
-                enumerate ( [ u' '.join(l) for l in zip(*xlists) ], 1 ) 
+                list(enumerate ( [ u' '.join(l) for l in zip(*xlists) ], 1 ) )
               ]  
 
 
@@ -410,8 +410,12 @@ def generate_news_2015_output(id_fname,src_fname,tgt_fname,out_fname,systemtype,
             outfile.write(u'<SourceName>{}</SourceName>\n'.format(src_str))
 
             for tgt_id,tgt_str in record[2]:
-	    	     outfile.write(u'<TargetName ID="{}">{}</TargetName>\n'.format(
-                     tgt_id,tgt_str))
+                    ## Fix for cases where the tgt string is empty. This creates problems for the NEWS evaluation script
+                    ## Workaround: Use the first candidate (if nonempty) else use the source string itself
+                    final_tgt_str= tgt_str if len(tgt_str) > 0 else (src_str if len(record[2][1])==0 else record[2][1] )
+
+                    outfile.write(u'<TargetName ID="{}">{}</TargetName>\n'.format(
+                    tgt_id,final_tgt_str))
                 
             outfile.write(u'</Name>\n\n')
 
