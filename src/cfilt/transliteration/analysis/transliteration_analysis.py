@@ -153,6 +153,14 @@ def kl_divergence(cmap_p,cmap_q):
 #    charlist=[]
 #    with codecs.open(infname,ofname,lang): 
 
+def most_frequent_error(analysis_dir): 
+
+    conf_mat=None 
+    with open(conf_mat_fname) as conf_mat_file:
+        conf_mat=pickle.load(conf_mat_file)
+
+    for ref_char in 
+
 if __name__=='__main__': 
 
     commands={

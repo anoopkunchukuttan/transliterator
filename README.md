@@ -4,6 +4,9 @@
 
 ## Pre-requisites
 
+- [Indic NLP Library] (http://anoopkunchukuttan.github.io/indic_nlp_library)
+- [nwalign 0.3.1](https://pypi.python.org/pypi/nwalign/): for Needleman-Wunsch global sequence alignment
+
 ## Usage
 
 To train the complete model, follow the steps mentioned below:  

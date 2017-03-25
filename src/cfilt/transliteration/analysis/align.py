@@ -127,6 +127,23 @@ def create_confusion_matrix(alignments):
     conf_df=pd.DataFrame(conf_dict,dtype=float).T.fillna(0.0)
     return  conf_df 
 
+def gather_alignment_info(alignments):
+    conf_dict=defaultdict(dict)
+    alignment_counts=[]
+
+    for src_aln, tgt_aln in alignments: 
+        for s,t in zip(src_aln,tgt_aln): 
+            conf_dict[s][t]=conf_dict[s].get(t,0)+1
+
+    for s in conf_dict.keys(): 
+        for t in conf_dict[s].keys(): 
+            alignment_counts.append([s,t,conf_dict[s][t]])
+    
+    alnc_df=pd.DataFrame(alignment_counts,columns=['ref_char','out_char','count'],dtype=float)
+    conf_df=pd.DataFrame(conf_dict,dtype=float).T.fillna(0.0)
+
+    return  alnc_df,conf_df 
+
 def score_phonetic_alignment(srcw,tgtw,slang,tlang,sim_matrix_path,gap_start_p=-1.0,gap_extend_p=-1.0):
 
     # convert to ascii required by align library 
@@ -159,10 +176,9 @@ if __name__ == '__main__':
         pickle.dump(alignments,align_file)
 
     # create confusion matrix 
-    confusion_df=create_confusion_matrix(alignments)
-    confusion_df.to_pickle(outdir+'/confusion_mat{}.pickle'.format(reranked))
-
-
+    aligncount_df,confusion_df=gather_alignment_info(alignments)
+    confusion_df.to_csv(outdir+'/confusion_mat{}.csv'.format(reranked),encoding='utf-8')
+    aligncount_df.to_csv(outdir+'/alignment_count{}.csv'.format(reranked),encoding='utf-8')
     
 #src=hi
 #tgt=kn
