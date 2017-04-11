@@ -72,22 +72,28 @@ def make_ascii_char(c,lang_code):
     For Indic scripts only 
     """
     assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
-    offset=ord(c)-langinfo.SCRIPT_RANGES[lang_code][0]
-    result=None 
-    if offset >=0 and offset <= 0x7F:
-        if offset==0x2d:
-            offset=0xff
-        elif offset==0x20:
-            offset=0xfe
-        elif offset==0x0a:
-            offset=0xfd
-        elif offset==0x0d:
-            offset=0xfc
-        elif offset==0x09:
-            offset=0xfb
-        result = chr(offset)
+    if langinfo.SCRIPT_RANGES.has_key(lang_code):
+        offset=ord(c)-langinfo.SCRIPT_RANGES[lang_code][0]
+        result=None 
+        if offset >=0 and offset <= 0x7F:
+            if offset==0x2d:
+                offset=0xff
+            elif offset==0x20:
+                offset=0xfe
+            elif offset==0x0a:
+                offset=0xfd
+            elif offset==0x0d:
+                offset=0xfc
+            elif offset==0x09:
+                offset=0xfb
+            result = chr(offset)
+        else: 
+            result = '|'   # placeholder character for invalid characters in stream
+    elif lang_code == 'ar': 
+        pass 
     else: 
-        result = '|'   # placeholder character for invalid characters in stream
+        return c 
+
     return result 
 
 def make_ascii(text,lang_code):
@@ -143,6 +149,30 @@ def gather_alignment_info(alignments):
     conf_df=pd.DataFrame(conf_dict,dtype=float).T.fillna(0.0)
 
     return  alnc_df,conf_df 
+
+def save_analysis_artifacts(reffname, outfname, tgtlang, outdir):
+
+    if not os.path.exists(outdir): 
+        os.mkdir(outdir)
+
+    # align words
+    alignments=list(align_transliterations(read_monolingual_corpus(reffname),read_monolingual_corpus(outfname),tgtlang))
+
+    # create confusion matrix 
+    aligncount_df,confusion_df=gather_alignment_info(alignments)
+
+    ## save artificats 
+
+    ## per sequence alignments 
+    with open(outdir+'/alignments.pickle','w') as align_file: 
+        pickle.dump(alignments,align_file)
+
+    ## confusion matric 
+    confusion_df.to_csv(outdir+'/confusion_mat.csv',encoding='utf-8')
+    confusion_df.to_pickle(outdir+'/confusion_mat.pickle')
+
+    ## alignment pair counts         
+    aligncount_df.to_csv(outdir+'/alignment_count.csv',encoding='utf-8')
 
 def score_phonetic_alignment(srcw,tgtw,slang,tlang,sim_matrix_path,gap_start_p=-1.0,gap_extend_p=-1.0):
 
