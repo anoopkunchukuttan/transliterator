@@ -31,35 +31,36 @@ from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTranslitera
 from cfilt.transliteration.utilities import *
 
 def restore_from_ascii_char(c,lang_code):
-    """
-    For Indic scripts only 
-    """
-    assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
-    cn=ord(c)
-    oc=''
-    if c=='-': # - character for alignment
-        oc=unicode(c)
-    elif c=='|': # placeholder character for invalid characters 
-        oc=unicode(c)
-    else:
-        if cn==0xff: # '-' character 
-            cn=0x2d
-        elif cn==0xfe: ## space 
-            cn=0x20
-        elif cn==0xfd: ## line feed
-            cn=0x0a
-        elif cn==0xfc: ## carriage return 
-            cn=0x0d
-        elif cn==0xfb: ## tab
-            cn=0x09
-        oc=unichr(cn+langinfo.SCRIPT_RANGES[lang_code][0])
-    return oc
+
+    if langinfo.SCRIPT_RANGES.has_key(lang_code):
+        cn=ord(c)
+        oc=''
+        if c=='-': # - character for alignment
+            oc=unicode(c)
+        elif c=='|': # placeholder character for invalid characters 
+            oc=unicode(c)
+        else:
+            if cn==0xff: # '-' character 
+                cn=0x2d
+            elif cn==0xfe: ## space 
+                cn=0x20
+            elif cn==0xfd: ## line feed
+                cn=0x0a
+            elif cn==0xfc: ## carriage return 
+                cn=0x0d
+            elif cn==0xfb: ## tab
+                cn=0x09
+            oc=unichr(cn+langinfo.SCRIPT_RANGES[lang_code][0])
+
+        return oc
+   
+    elif lang_code=='ar': 
+        pass 
+    else: 
+        return unicode(c) 
 
 def restore_from_ascii(aln,lang_code):
-    """
-    For Indic scripts only 
-    """
-    assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
+
     text=[]
     
     for c in aln:
@@ -68,10 +69,9 @@ def restore_from_ascii(aln,lang_code):
     return u''.join(text)
 
 def make_ascii_char(c,lang_code): 
-    """
-    For Indic scripts only 
-    """
-    assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
+
+    PLACEHOLDER='|'
+
     if langinfo.SCRIPT_RANGES.has_key(lang_code):
         offset=ord(c)-langinfo.SCRIPT_RANGES[lang_code][0]
         result=None 
@@ -88,11 +88,11 @@ def make_ascii_char(c,lang_code):
                 offset=0xfb
             result = chr(offset)
         else: 
-            result = '|'   # placeholder character for invalid characters in stream
+            result = PLACEHOLDER   # placeholder character for invalid characters in stream
     elif lang_code == 'ar': 
         pass 
     else: 
-        return c 
+        return  str(c) if (ord(c) < 127) else PLACEHOLDER 
 
     return result 
 
@@ -100,26 +100,42 @@ def make_ascii(text,lang_code):
     """
     Convert to ASCII due to requirement of nwalign library
     """
-    assert(langinfo.SCRIPT_RANGES.has_key(lang_code))
     trans_lit_text=[]
     for c in text: 
         trans_lit_text.append(make_ascii_char(c,lang_code))
     return trans_lit_text
 
+#def align_transliterations(src_wordlist,tgt_wordlist,lang):
+#
+#    for srcw,tgtw in itertools.izip(src_wordlist,tgt_wordlist): 
+#        # convert to ascii required by align library 
+#        nsrcw=''.join(make_ascii(srcw,lang) if lang in langinfo.SCRIPT_RANGES else [str(c) for c in srcw ])
+#        ntgtw=''.join(make_ascii(tgtw,lang) if lang in langinfo.SCRIPT_RANGES else [str(c) for c in tgtw ])
+#        
+#        # use global alignment 
+#        src_aln,tgt_aln=nw.global_align(nsrcw,ntgtw)
+#        
+#        # make it readable again 
+#        
+#        src_aln=restore_from_ascii(src_aln,lang) if lang in langinfo.SCRIPT_RANGES else [unicode(c) for c in src_aln ]
+#        tgt_aln=restore_from_ascii(tgt_aln,lang) if lang in langinfo.SCRIPT_RANGES else [unicode(c) for c in tgt_aln ]
+#
+#        yield (src_aln,tgt_aln)
+
 def align_transliterations(src_wordlist,tgt_wordlist,lang):
 
     for srcw,tgtw in itertools.izip(src_wordlist,tgt_wordlist): 
         # convert to ascii required by align library 
-        nsrcw=''.join(make_ascii(srcw,lang) if lang in langinfo.SCRIPT_RANGES else [str(c) for c in srcw ])
-        ntgtw=''.join(make_ascii(tgtw,lang) if lang in langinfo.SCRIPT_RANGES else [str(c) for c in tgtw ])
+        nsrcw=''.join(make_ascii(srcw,lang))
+        ntgtw=''.join(make_ascii(tgtw,lang))
         
         # use global alignment 
         src_aln,tgt_aln=nw.global_align(nsrcw,ntgtw)
         
         # make it readable again 
         
-        src_aln=restore_from_ascii(src_aln,lang) if lang in langinfo.SCRIPT_RANGES else [unicode(c) for c in src_aln ]
-        tgt_aln=restore_from_ascii(tgt_aln,lang) if lang in langinfo.SCRIPT_RANGES else [unicode(c) for c in tgt_aln ]
+        src_aln=restore_from_ascii(src_aln,lang) 
+        tgt_aln=restore_from_ascii(tgt_aln,lang) 
 
         yield (src_aln,tgt_aln)
 
