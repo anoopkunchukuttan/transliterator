@@ -200,8 +200,8 @@ def parse_news_2015(infname,
 
             # Case 2: generate just a single word 
 
-            srcfile.write( u' '.join([  u' '.join(src_word) for src_word in src_words ])   +'\n')
-            tgtfile.write( u' '.join([  u' '.join(tgt_word) for tgt_word in tgt_words ])   +'\n')
+            srcfile.write( u' _ '.join([  u' '.join(src_word.upper()) for src_word in src_words ])   +'\n')
+            tgtfile.write( u' _ '.join([  u' '.join(tgt_word.upper()) for tgt_word in tgt_words ])   +'\n')
             idfile.write('{}_{}_{}\n'.format(name_id,tgt_id,0))
 
     print '{}|{}|{}|{}|{}|{}|{}'.format(prefix,src_lang,tgt_lang,
