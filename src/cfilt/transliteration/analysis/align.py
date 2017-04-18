@@ -27,6 +27,7 @@ import nwalign as nw
 from indicnlp import langinfo 
 from indicnlp.transliterate import itrans_transliterator
 from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTransliterator
+from indicnlp.script import indic_scripts as isc
 
 from cfilt.transliteration.utilities import *
 
@@ -203,6 +204,70 @@ def score_phonetic_alignment(srcw,tgtw,slang,tlang,sim_matrix_path,gap_start_p=-
     #src_aln,tgt_aln=nw.global_align(nsrcw,ntgtw,gap_open=gap_start_p, gap_extend=gap_extend_p)
     #return nw.score_alignment(src_aln,tgt_aln,gap_open=gap_start_p, gap_extend=gap_extend_p)
 
+
+
+################  ERROR ANALYSIS ######
+
+class CharClassIdentifier(object): 
+
+    def __init__(self): 
+        
+        self.vowel_set={}
+        self.consonant_set={}
+
+        ## vowel set 
+        self.vowel_set['en']=set(['A','E','I','O','U'])
+        for lang in [ 'pl', 'cs', 'sl', 'sk' ]:
+            self.vowel_set[lang]=set(['A','E','I','O','U'])  # add vowels 
+
+        ##consonant set 
+        for lang in [ 'en']:
+            self.consonant_set['en']=set([ unichr(i) for i in range(ord('A'),ord('Z')) ]) \
+                                        - self.vowel_set['en']
+
+    def is_vowel(self,c,lang): 
+        if isc.is_supported_language(lang): 
+            return isc.is_vowel(isc.get_phonetic_feature_vector(c,lang))
+        elif lang in self.vowel_set: 
+            return c in self.vowel_set[lang]
+        else: 
+            raise Exception('Language no supported. Add list of vowels for this language')
+
+    def is_consonant(self,c,lang): 
+        if isc.is_supported_language(lang): 
+            return isc.is_consonant(isc.get_phonetic_feature_vector(c,lang))
+        elif lang in self.consonant_set: 
+            return c in self.consonant_set[lang]
+        else: 
+            raise Exception('Language no supported. Add list of consonants for this language')
+
+cci=CharClassIdentifier()
+
+def read_align_count_file(align_count_fname):
+    return pd.read_csv(align_count_fname,header=0,index_col=0,sep=',',encoding='utf-8')
+
+def char_error_rate(a_df): 
+    """
+     a_df: align count dataframe
+    """
+    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+
+def vowel_error_rate(a_df,lang): 
+    """
+     a_df: align count dataframe
+    """
+    sel_rows=filter(lambda r: cci.is_vowel(r[1]['ref_char'],lang), a_df.iterrows())
+    a_df=x=pd.DataFrame([x[1] for x in sel_rows])
+    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+
+def consonant_error_rate(a_df,lang): 
+    """
+     a_df: align count dataframe
+    """
+    sel_rows=filter(lambda r: cci.is_consonant(r[1]['ref_char'],lang), a_df.iterrows())
+    a_df=x=pd.DataFrame([x[1] for x in sel_rows])
+    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+
 if __name__ == '__main__': 
 
     srcfname=sys.argv[1]
@@ -225,7 +290,14 @@ if __name__ == '__main__':
     aligncount_df,confusion_df=gather_alignment_info(alignments)
     confusion_df.to_csv(outdir+'/confusion_mat{}.csv'.format(reranked),encoding='utf-8')
     aligncount_df.to_csv(outdir+'/alignment_count{}.csv'.format(reranked),encoding='utf-8')
-    
+   
+    #from indicnlp import loader
+    #loader.load()
+    #a_df=read_align_count_file('/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_official/2_multilingual/onehot_shared/multi-conf/outputs/022_analysis_en-bn/alignment_count.csv')
+    #print char_error_rate(a_df)
+    #print vowel_error_rate(a_df,'bn')
+    #print consonant_error_rate(a_df,'bn')
+
 #src=hi
 #tgt=kn
 #
