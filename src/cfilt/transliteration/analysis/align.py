@@ -252,6 +252,27 @@ def char_error_rate(a_df):
     """
     return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
 
+def ins_error_rate(a_df): 
+    """
+    rate of unnecessary insertion 
+    a_df: align count dataframe
+    """
+    return a_df[a_df.ref_char=='-']['count'].sum()/a_df['count'].sum()
+  
+def del_error_rate(a_df): 
+    """
+    rate of unnecessary deletion
+    a_df: align count dataframe
+    """
+    return a_df[a_df.out_char=='-']['count'].sum()/a_df['count'].sum()
+  
+def sub_error_rate(a_df): 
+    """
+    rate of substitution errors 
+    a_df: align count dataframe
+    """
+    return char_error_rate(a_df) - ( ins_error_rate(a_df) + del_error_rate(a_df) )
+  
 def vowel_error_rate(a_df,lang): 
     """
      a_df: align count dataframe
@@ -270,33 +291,43 @@ def consonant_error_rate(a_df,lang):
 
 if __name__ == '__main__': 
 
-    srcfname=sys.argv[1]
-    tgtfname=sys.argv[2]
-    lang=sys.argv[3]
-    outdir=sys.argv[4]
-    reranked=''
-    if len(sys.argv)>=6: 
-        reranked='.reranked'
+    #srcfname=sys.argv[1]
+    #tgtfname=sys.argv[2]
+    #lang=sys.argv[3]
+    #outdir=sys.argv[4]
+    #reranked=''
+    #if len(sys.argv)>=6: 
+    #    reranked='.reranked'
 
-    if not os.path.exists(outdir): 
-        os.mkdir(outdir)
+    #if not os.path.exists(outdir): 
+    #    os.mkdir(outdir)
 
-    # align words
-    alignments=list(align_transliterations(read_monolingual_corpus(srcfname),read_monolingual_corpus(tgtfname),lang))
-    with open(outdir+'/alignments{}.pickle'.format(reranked),'w') as align_file: 
-        pickle.dump(alignments,align_file)
+    ## align words
+    #alignments=list(align_transliterations(read_monolingual_corpus(srcfname),read_monolingual_corpus(tgtfname),lang))
+    #with open(outdir+'/alignments{}.pickle'.format(reranked),'w') as align_file: 
+    #    pickle.dump(alignments,align_file)
 
-    # create confusion matrix 
-    aligncount_df,confusion_df=gather_alignment_info(alignments)
-    confusion_df.to_csv(outdir+'/confusion_mat{}.csv'.format(reranked),encoding='utf-8')
-    aligncount_df.to_csv(outdir+'/alignment_count{}.csv'.format(reranked),encoding='utf-8')
+    ## create confusion matrix 
+    #aligncount_df,confusion_df=gather_alignment_info(alignments)
+    #confusion_df.to_csv(outdir+'/confusion_mat{}.csv'.format(reranked),encoding='utf-8')
+    #aligncount_df.to_csv(outdir+'/alignment_count{}.csv'.format(reranked),encoding='utf-8')
    
-    #from indicnlp import loader
-    #loader.load()
+    from indicnlp import loader
+    loader.load()
+
     #a_df=read_align_count_file('/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_official/2_multilingual/onehot_shared/multi-conf/outputs/022_analysis_en-bn/alignment_count.csv')
     #print char_error_rate(a_df)
     #print vowel_error_rate(a_df,'bn')
     #print consonant_error_rate(a_df,'bn')
+
+
+    a_df=read_align_count_file('/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/multi-conf/outputs/010_analysis_bn-hi/alignment_count.csv')
+    char_error_rate(a_df)
+    #print ins_error_rate(a_df)
+    #print del_error_rate(a_df)
+    #print sub_error_rate(a_df)
+    #print vowel_error_rate(a_df,'hi')
+    #print consonant_error_rate(a_df,'hi')
 
 #src=hi
 #tgt=kn
