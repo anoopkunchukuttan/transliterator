@@ -292,6 +292,16 @@ def consonant_error_rate(a_df,lang):
     a_df=x=pd.DataFrame([x[1] for x in sel_rows])
     return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
 
+#def err_dist(a_df,lang): 
+#    """
+#     a_df: align count dataframe
+#    """
+#    rows=[x[1] for x in a_df.iterrows()]
+#    v_err_rows=filter(lambda r: cci.is_vowel(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows )
+#    c_err_rows=filter(lambda r: cci.is_consonant(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows )
+#    a_df=x=pd.DataFrame([x[1] for x in sel_rows])
+#    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+
 if __name__ == '__main__': 
 
     #srcfname=sys.argv[1]
