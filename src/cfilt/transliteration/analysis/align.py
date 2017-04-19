@@ -217,13 +217,16 @@ class CharClassIdentifier(object):
 
         ## vowel set 
         self.vowel_set['en']=set(['A','E','I','O','U'])
-        for lang in [ 'pl', 'cs', 'sl', 'sk' ]:
-            self.vowel_set[lang]=set(['A','E','I','O','U'])  # add vowels 
+        #for lang in [ 'pl', 'cs', 'sl', 'sk' ]:
+        #    self.vowel_set[lang]=set(['A','E','I','O','U'])  # add vowels 
 
         ##consonant set 
         for lang in [ 'en']:
             self.consonant_set['en']=set([ unichr(i) for i in range(ord('A'),ord('Z')) ]) \
                                         - self.vowel_set['en']
+
+    def is_supported_language(self,lang): 
+        return isc.is_supported_language(lang) or lang in self.vowel_set
 
     def is_vowel(self,c,lang): 
         if isc.is_supported_language(lang): 
