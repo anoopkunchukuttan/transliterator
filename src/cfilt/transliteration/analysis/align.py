@@ -300,7 +300,7 @@ def vowel_error_rate(a_df,lang):
     ## insertion errors 
     vi_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_vowel(r['out_char'],lang) , rows ) )
     ## all vowel rows
-    all_vowel_df=pd.DataFrame(filter(lambda r: cci.is_vowel(r[1]['ref_char'],lang), rows))
+    all_vowel_df=pd.DataFrame(filter(lambda r: cci.is_vowel(r['ref_char'],lang), rows))
 
     ## total vowel errors 
     n_vow_err =vds_err_df['count'].sum() + vi_err_df['count'].sum()
@@ -324,7 +324,7 @@ def consonant_error_rate(a_df,lang):
     ## insertion errors 
     ci_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_consonant(r['out_char'],lang) , rows ) )
     ## all vowel rows
-    all_cons_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r[1]['ref_char'],lang), rows))
+    all_cons_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r['ref_char'],lang), rows))
 
     ## total vowel errors 
     n_cons_err =cds_err_df['count'].sum() + ci_err_df['count'].sum()
