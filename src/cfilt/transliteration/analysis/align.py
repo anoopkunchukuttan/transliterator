@@ -292,15 +292,31 @@ def consonant_error_rate(a_df,lang):
     a_df=x=pd.DataFrame([x[1] for x in sel_rows])
     return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
 
-#def err_dist(a_df,lang): 
-#    """
-#     a_df: align count dataframe
-#    """
-#    rows=[x[1] for x in a_df.iterrows()]
-#    v_err_rows=filter(lambda r: cci.is_vowel(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows )
-#    c_err_rows=filter(lambda r: cci.is_consonant(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows )
-#    a_df=x=pd.DataFrame([x[1] for x in sel_rows])
-#    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+def err_dist(a_df,lang): 
+    """
+     a_df: align count dataframe
+    """
+    rows=[x[1] for x in a_df.iterrows()]
+
+    ## deletion and substition errors 
+    vds_err_df=pd.DataFrame(filter(lambda r: cci.is_vowel(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows ) )
+    cds_err_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows ) )
+
+    ## insertion errors 
+    vi_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_vowel(r['out_char'],lang) , rows ) )
+    ci_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_consonant(r['out_char'],lang) , rows ) )
+
+    ## vowel errors 
+    n_vow_err =vds_err_df['count'].sum() + vi_err_df['count'].sum()
+    n_cons_err=cds_err_df['count'].sum() + ci_err_df['count'].sum()
+
+    ## total errors
+    n_tot_err=a_df[a_df.ref_char!=a_df.out_char]['count'].sum()
+
+    # other errors 
+    n_oth_err=n_tot_err - (n_vow_err+n_cons_err)
+
+    return (n_vow_err/n_tot_err,n_cons_err/n_tot_err,n_oth_err/n_tot_err)
 
 if __name__ == '__main__': 
 
