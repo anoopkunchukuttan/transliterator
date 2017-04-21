@@ -244,6 +244,15 @@ class CharClassIdentifier(object):
         else: 
             raise Exception('Language no supported. Add list of consonants for this language')
 
+    def get_char_type(self,c,lang):         
+
+        if self.is_vowel(c,lang): 
+            return 'V'
+        elif self.is_consonant(c,lang): 
+            return 'C'
+        else: 
+            return 'O'
+
 cci=CharClassIdentifier()
 
 def read_align_count_file(align_count_fname):
@@ -280,17 +289,49 @@ def vowel_error_rate(a_df,lang):
     """
      a_df: align count dataframe
     """
-    sel_rows=filter(lambda r: cci.is_vowel(r[1]['ref_char'],lang), a_df.iterrows())
-    a_df=x=pd.DataFrame([x[1] for x in sel_rows])
-    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+    #sel_rows=filter(lambda r: cci.is_vowel(r[1]['ref_char'],lang), a_df.iterrows())
+    #a_df=x=pd.DataFrame([x[1] for x in sel_rows])
+    #return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+
+    rows=[x[1] for x in a_df.iterrows()]
+
+    ## deletion and substition errors 
+    vds_err_df=pd.DataFrame(filter(lambda r: cci.is_vowel(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows ) )
+    ## insertion errors 
+    vi_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_vowel(r['out_char'],lang) , rows ) )
+    ## all vowel rows
+    all_vowel_df=pd.DataFrame(filter(lambda r: cci.is_vowel(r[1]['ref_char'],lang), rows))
+
+    ## total vowel errors 
+    n_vow_err =vds_err_df['count'].sum() + vi_err_df['count'].sum()
+    ## total vowels
+    n_vow=all_vowel_df['count'].sum()
+
+    return n_vow_err/n_vow
 
 def consonant_error_rate(a_df,lang): 
     """
      a_df: align count dataframe
     """
-    sel_rows=filter(lambda r: cci.is_consonant(r[1]['ref_char'],lang), a_df.iterrows())
-    a_df=x=pd.DataFrame([x[1] for x in sel_rows])
-    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+    #sel_rows=filter(lambda r: cci.is_consonant(r[1]['ref_char'],lang), a_df.iterrows())
+    #a_df=x=pd.DataFrame([x[1] for x in sel_rows])
+    #return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
+
+    rows=[x[1] for x in a_df.iterrows()]
+
+    ## deletion and substition errors 
+    cds_err_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows ) )
+    ## insertion errors 
+    ci_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_consonant(r['out_char'],lang) , rows ) )
+    ## all vowel rows
+    all_cons_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r[1]['ref_char'],lang), rows))
+
+    ## total vowel errors 
+    n_cons_err =cds_err_df['count'].sum() + ci_err_df['count'].sum()
+    ## total vowels
+    n_cons=all_cons_df['count'].sum()
+
+    return n_cons_err/n_cons
 
 def err_dist(a_df,lang): 
     """
@@ -320,6 +361,10 @@ def err_dist(a_df,lang):
 
 if __name__ == '__main__': 
 
+    from indicnlp import loader
+    loader.load()
+
+
     #srcfname=sys.argv[1]
     #tgtfname=sys.argv[2]
     #lang=sys.argv[3]
@@ -341,9 +386,6 @@ if __name__ == '__main__':
     #confusion_df.to_csv(outdir+'/confusion_mat{}.csv'.format(reranked),encoding='utf-8')
     #aligncount_df.to_csv(outdir+'/alignment_count{}.csv'.format(reranked),encoding='utf-8')
    
-    from indicnlp import loader
-    loader.load()
-
     #a_df=read_align_count_file('/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_official/2_multilingual/onehot_shared/multi-conf/outputs/022_analysis_en-bn/alignment_count.csv')
     #print char_error_rate(a_df)
     #print vowel_error_rate(a_df,'bn')
