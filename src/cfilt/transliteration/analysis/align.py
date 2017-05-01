@@ -29,6 +29,7 @@ from indicnlp.script import indic_scripts as isc
 
 from cfilt.transliteration.utilities import *
 
+
 def align_nw(refw,outw): 
     """
     Implementation of Needleman-Wunch alignment algorithm
@@ -184,22 +185,9 @@ def save_analysis_artifacts(reffname, outfname, tgtlang, outdir):
     ## alignment pair counts         
     aligncount_df.to_csv(outdir+'/alignment_count.csv',encoding='utf-8')
 
-def score_phonetic_alignment(srcw,tgtw,slang,tlang,sim_matrix_path,gap_start_p=-1.0,gap_extend_p=-1.0):
-
-    # convert to ascii required by align library 
-    nsrcw=''.join(make_ascii(srcw,slang) if slang in langinfo.SCRIPT_RANGES else [str(c) for c in srcw ])
-    ntgtw=''.join(make_ascii(tgtw,tlang) if tlang in langinfo.SCRIPT_RANGES else [str(c) for c in tgtw ])
-    
-    ## use global alignment 
-    src_aln,tgt_aln=nw.global_align(nsrcw,ntgtw,matrix=sim_matrix_path, gap_open=gap_start_p, gap_extend=gap_extend_p)
-    return nw.score_alignment(src_aln,tgt_aln,matrix=sim_matrix_path, gap_open=gap_start_p, gap_extend=gap_extend_p)
-
-    #src_aln,tgt_aln=nw.global_align(nsrcw,ntgtw,gap_open=gap_start_p, gap_extend=gap_extend_p)
-    #return nw.score_alignment(src_aln,tgt_aln,gap_open=gap_start_p, gap_extend=gap_extend_p)
-
-
-
 ################  ERROR ANALYSIS ######
+
+GAP_SYM=u'~'
 
 class CharClassIdentifier(object): 
 
@@ -262,14 +250,14 @@ def ins_error_rate(a_df):
     rate of unnecessary insertion 
     a_df: align count dataframe
     """
-    return a_df[a_df.ref_char=='-']['count'].sum()/a_df['count'].sum()
+    return a_df[a_df.ref_char==GAP_SYM]['count'].sum()/a_df['count'].sum()
   
 def del_error_rate(a_df): 
     """
     rate of unnecessary deletion
     a_df: align count dataframe
     """
-    return a_df[a_df.out_char=='-']['count'].sum()/a_df['count'].sum()
+    return a_df[a_df.out_char==GAP_SYM]['count'].sum()/a_df['count'].sum()
   
 def sub_error_rate(a_df): 
     """
@@ -291,7 +279,7 @@ def vowel_error_rate(a_df,lang):
     ## deletion and substition errors 
     vds_err_df=pd.DataFrame(filter(lambda r: cci.is_vowel(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows ) )
     ## insertion errors 
-    vi_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_vowel(r['out_char'],lang) , rows ) )
+    vi_err_df=pd.DataFrame(filter(lambda r: r['ref_char']==GAP_SYM and cci.is_vowel(r['out_char'],lang) , rows ) )
     ## all vowel rows
     all_vowel_df=pd.DataFrame(filter(lambda r: cci.is_vowel(r['ref_char'],lang), rows))
 
@@ -315,7 +303,7 @@ def consonant_error_rate(a_df,lang):
     ## deletion and substition errors 
     cds_err_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows ) )
     ## insertion errors 
-    ci_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_consonant(r['out_char'],lang) , rows ) )
+    ci_err_df=pd.DataFrame(filter(lambda r: r['ref_char']==GAP_SYM and cci.is_consonant(r['out_char'],lang) , rows ) )
     ## all vowel rows
     all_cons_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r['ref_char'],lang), rows))
 
@@ -337,8 +325,8 @@ def err_dist(a_df,lang):
     cds_err_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r['ref_char'],lang) and r['ref_char']!=r['out_char'], rows ) )
 
     ## insertion errors 
-    vi_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_vowel(r['out_char'],lang) , rows ) )
-    ci_err_df=pd.DataFrame(filter(lambda r: r['ref_char']=='-' and cci.is_consonant(r['out_char'],lang) , rows ) )
+    vi_err_df=pd.DataFrame(filter(lambda r: r['ref_char']==GAP_SYM and cci.is_vowel(r['out_char'],lang) , rows ) )
+    ci_err_df=pd.DataFrame(filter(lambda r: r['ref_char']==GAP_SYM and cci.is_consonant(r['out_char'],lang) , rows ) )
 
     ## vowel errors 
     n_vow_err =vds_err_df['count'].sum() + vi_err_df['count'].sum()
@@ -357,18 +345,16 @@ if __name__ == '__main__':
     from indicnlp import loader
     loader.load()
 
-    reffname=sys.argv[1]
-    outfname=sys.argv[2]
-    tgtlang=sys.argv[3]
-    outdir=sys.argv[4]
+    #reffname=sys.argv[1]
+    #outfname=sys.argv[2]
+    #tgtlang=sys.argv[3]
+    #outdir=sys.argv[4]
 
-    print 'hello' 
+    #if not os.path.exists(outdir): 
+    #    print outdir
+    #    os.mkdir(outdir)
 
-    if not os.path.exists(outdir): 
-        print outdir
-        os.mkdir(outdir)
-
-    save_analysis_artifacts(reffname, outfname, tgtlang, outdir)
+    #save_analysis_artifacts(reffname, outfname, tgtlang, outdir)
 
     #a_df=read_align_count_file('/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_official/2_multilingual/onehot_shared/multi-conf/outputs/022_analysis_en-bn/alignment_count.csv')
     #print char_error_rate(a_df)
