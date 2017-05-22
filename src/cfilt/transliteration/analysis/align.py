@@ -28,6 +28,7 @@ from indicnlp.transliterate.unicode_transliterate import UnicodeIndicTranslitera
 from indicnlp.script import indic_scripts as isc
 
 from cfilt.transliteration.utilities import *
+import slavic_characters
 
 
 def align_nw(refw,outw): 
@@ -198,13 +199,15 @@ class CharClassIdentifier(object):
 
         ## vowel set 
         self.vowel_set['en']=set(['A','E','I','O','U'])
-        #for lang in [ 'pl', 'cs', 'sl', 'sk' ]:
-        #    self.vowel_set[lang]=set(['A','E','I','O','U'])  # add vowels 
+        for lang in [ 'pl', 'cs', 'sl', 'sk' ]:
+            self.vowel_set[lang]=set(slavic_characters.latin_vowels)  
 
         ##consonant set 
         for lang in [ 'en']:
             self.consonant_set['en']=set([ unichr(i) for i in range(ord('A'),ord('Z')) ]) \
                                         - self.vowel_set['en']
+        for lang in [ 'pl', 'cs', 'sl', 'sk' ]:
+            self.consonant_set[lang]=set(slavic_characters.latin_consonants)  
 
     def is_supported_language(self,lang): 
         return isc.is_supported_language(lang) or lang in self.vowel_set
@@ -245,6 +248,12 @@ def char_error_rate(a_df):
     """
     return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()/a_df['count'].sum()
 
+def char_error_count(a_df): 
+    """
+     a_df: align count dataframe
+    """
+    return a_df[a_df.ref_char!=a_df.out_char]['count'].sum()
+
 def ins_error_rate(a_df): 
     """
     rate of unnecessary insertion 
@@ -269,6 +278,8 @@ def sub_error_rate(a_df):
 def vowel_error_rate(a_df,lang): 
     """
      a_df: align count dataframe
+
+     return vowel error rate
     """
     #sel_rows=filter(lambda r: cci.is_vowel(r[1]['ref_char'],lang), a_df.iterrows())
     #a_df=x=pd.DataFrame([x[1] for x in sel_rows])
@@ -285,14 +296,16 @@ def vowel_error_rate(a_df,lang):
 
     ## total vowel errors 
     n_vow_err =vds_err_df['count'].sum() + vi_err_df['count'].sum()
-    ## total vowels
-    n_vow=all_vowel_df['count'].sum()
+    ## total vowels occurences to consider for error calcuation (ins,del and subst)
+    n_vow=all_vowel_df['count'].sum() + vi_err_df['count'].sum()
 
     return n_vow_err/n_vow
 
 def consonant_error_rate(a_df,lang): 
     """
      a_df: align count dataframe
+
+     return tuple consonant error rate
     """
     #sel_rows=filter(lambda r: cci.is_consonant(r[1]['ref_char'],lang), a_df.iterrows())
     #a_df=x=pd.DataFrame([x[1] for x in sel_rows])
@@ -307,16 +320,18 @@ def consonant_error_rate(a_df,lang):
     ## all vowel rows
     all_cons_df=pd.DataFrame(filter(lambda r: cci.is_consonant(r['ref_char'],lang), rows))
 
-    ## total vowel errors 
+    ## total consonant errors 
     n_cons_err =cds_err_df['count'].sum() + ci_err_df['count'].sum()
-    ## total vowels
-    n_cons=all_cons_df['count'].sum()
+    ## total consonant occurences to consider for error calcuation (ins,del and subst)
+    n_cons=all_cons_df['count'].sum() + ci_err_df['count'].sum()
 
     return n_cons_err/n_cons
 
 def err_dist(a_df,lang): 
     """
      a_df: align count dataframe
+
+     returns tuple (n_vow_err,n_cons_err,n_oth_err,n_tot_err)
     """
     rows=[x[1] for x in a_df.iterrows()]
 
@@ -338,7 +353,7 @@ def err_dist(a_df,lang):
     # other errors 
     n_oth_err=n_tot_err - (n_vow_err+n_cons_err)
 
-    return (n_vow_err/n_tot_err,n_cons_err/n_tot_err,n_oth_err/n_tot_err)
+    return (n_vow_err,n_cons_err,n_oth_err,n_tot_err)
 
 if __name__ == '__main__': 
 
