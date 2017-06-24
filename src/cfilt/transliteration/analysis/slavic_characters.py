@@ -1,6 +1,8 @@
 
-## Note: Only capital letters are shown 
+def is_supported_language_latin(lang): 
+    return lang in ['cs','pl','sk','sl']
 
+## Note: Only capital letters are shown 
 
 ### Latin script vowels 
 latin_vowels=[
