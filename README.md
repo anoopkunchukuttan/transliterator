@@ -2,6 +2,8 @@
 
 **Documentation is not yet complete, please mail me if you need information about using the system. The documentation should be complete in a week** 
 
+Unsupervised transliteration system which uses phoentic features to define transliteration priors.  This is an EM based method which builds on Ravi and Knight's 2009 work. In addition, self training is used to iteratively build a substring based transliteration system in order to incorporate contextual information. 
+
 ## Pre-requisites
 
 - [Indic NLP Library] (http://anoopkunchukuttan.github.io/indic_nlp_library)
