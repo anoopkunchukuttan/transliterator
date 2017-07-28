@@ -50,7 +50,7 @@ contextual knowledge_. Conference on Natural Language Learning (CoNLL). 2016.
 
 Anoop Kunchukuttan: <anoop.kunchukuttan@gmail.com>
 
-##LICENSE
+## LICENSE
 
 Copyright Anoop Kunchukuttan 2015 - present
  
