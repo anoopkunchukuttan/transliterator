@@ -36,10 +36,8 @@ To train the complete model, follow the steps mentioned below:
 where, `synthesized_corpus_directory` will contain the pseudo-parallel corpus required for the next stage       
 
 
-4. Train a substring-based model 
-
-Training and testing an unsupervised model 
-
+4. Train a substring-based model: 
+    Use the pseudo parallel corpus created in the previous stage to train a supervised model. You can use Moses or any other translation/transliteration system to train the transliteration model. We used Moses in our experiments with monotonic reordering. Please see the paper for details of Moses settings. In order to apply self-learning, you can decode the training set using the newly trained substring level model and generate a new pseudo-parallel corpus. You can apply self-learning for k iterations till convergence or a fixed upper limit. In practice, we found 5 iterations to be sufficient for convergence.
 
 ## Papers
 
