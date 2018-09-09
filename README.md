@@ -6,7 +6,7 @@ Unsupervised transliteration system which uses phoentic features to define trans
 
 ## Pre-requisites
 
-- [Indic NLP Library] (http://anoopkunchukuttan.github.io/indic_nlp_library)
+- [Indic NLP Library](http://anoopkunchukuttan.github.io/indic_nlp_library)
 - [nwalign 0.3.1](https://pypi.python.org/pypi/nwalign/): for Needleman-Wunsch global sequence alignment
 
 ## Usage
